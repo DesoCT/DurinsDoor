@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Durin's Door</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .stat-row {
+      display: flex;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.8rem;
+    }
+    .stat-chip {
+      background: var(--bg-stone);
+      border: 1px solid var(--border-rune);
+      border-radius: var(--radius);
+      padding: 0.45rem 1rem;
+      font-size: 0.80rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .stat-chip strong { color: var(--gold); font-family: 'Cinzel', serif; }
+    .url-cell {
+      font-family: 'Courier New', monospace;
+      font-size: 0.70rem;
+      color: var(--elvish);
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .url-cell a { color: inherit; text-decoration: none; }
+    .url-cell a:hover { text-decoration: underline; color: var(--elvish-glow); }
+    .no-shares {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-dim);
+    }
+    .no-shares-glyph {
+      font-size: 3.5rem;
+      display: block;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+    .no-shares-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+    }
+    /* Confirmation dialog */
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5,8,16,0.82);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirm-overlay.visible { display: flex; }
+    .confirm-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-rune);
+      border-radius: calc(var(--radius) * 2);
+      padding: 2rem 2.5rem;
+      max-width: 380px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 0 60px rgba(0,0,0,0.85);
+    }
+    .confirm-box h3 {
+      font-family: 'Cinzel', serif;
+      color: var(--gold);
+      margin-bottom: 0.8rem;
+      font-size: 1.05rem;
+    }
+    .confirm-box p { color: var(--text-dim); font-size: 0.88rem; margin-bottom: 1.5rem; }
+    .confirm-filename { color: var(--text-primary); font-style: normal; font-weight: 500; }
+    .confirm-actions { display: flex; gap: 0.75rem; justify-content: center; }
+    .btn-cancel {
+      background: transparent;
+      border: 1px solid var(--border-rune);
+      color: var(--text-dim);
+      border-radius: var(--radius);
+      padding: 0.5rem 1.2rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-cancel:hover { border-color: var(--silver); color: var(--silver); }
+    .token-badge {
+      font-family: 'Courier New', monospace;
+      font-size: 0.70rem;
+      color: var(--elvish);
+      background: var(--bg-stone);
+      border: 1px solid rgba(107,197,255,0.18);
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="stars-canvas"></canvas>
+  <div class="mist-layer"></div>
+
+  <!-- Revoke confirmation dialog -->
+  <div class="confirm-overlay" id="confirmOverlay" role="dialog" aria-modal="true">
+    <div class="confirm-box">
+      <h3>⚠ Seal the Door</h3>
+      <p>
+        Revoke the share for<br>
+        <span class="confirm-filename" id="confirmName">this file</span>?<br><br>
+        The encrypted file will be permanently deleted and the link will stop working immediately.
+      </p>
+      <div class="confirm-actions">
+        <button class="btn-cancel" id="cancelBtn">Cancel</button>
+        <form id="confirmForm" method="POST" style="margin:0;">
+          <button type="submit" class="btn-revoke"
+                  style="padding:0.5rem 1.2rem; font-size:0.85rem;">
+            Revoke &amp; Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-wrapper" style="justify-content:flex-start; padding-top:2.5rem;">
+    <div class="admin-container">
+
+      <!-- ── Header ── -->
+      <div class="admin-header">
+        <div>
+          <h1 class="admin-title">
+            🛡&ensp;Durin's Gate &mdash; Admin
+          </h1>
+        </div>
+        <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+          <span style="font-size:0.75rem; color:var(--text-dim);">
+            token: <span class="token-badge">{{if gt (len .Token) 10}}{{slice .Token 0 10}}&hellip;{{else}}{{.Token}}{{end}}</span>
+          </span>
+          <a href="/" class="back-link">← Back to door</a>
+        </div>
+      </div>
+
+      <!-- ── Quick stats ── -->
+      <div class="stat-row">
+        <div class="stat-chip">
+          <span>📋</span> Shares: <strong>{{len .Shares}}</strong>
+        </div>
+        {{if .Shares}}
+        <div class="stat-chip">
+          <span>🌐</span> Base URL: <strong style="font-family:'Courier New',monospace; font-size:0.72rem; color:var(--elvish);">{{.BaseURL}}</strong>
+        </div>
+        {{end}}
+      </div>
+
+      <!-- ── Shares table ── -->
+      {{if .Shares}}
+      <div style="overflow-x:auto; border-radius:var(--radius);">
+        <table class="shares-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>File</th>
+              <th>Size</th>
+              <th>Downloads</th>
+              <th>Expires</th>
+              <th>Time Left</th>
+              <th>Status</th>
+              <th>Download Link</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {{range .Shares}}
+          <tr>
+            <!-- Share ID (truncated) -->
+            <td class="share-id" title="{{.ID}}">
+              {{slice .ID 0 12}}&hellip;
+            </td>
+
+            <!-- Filename + lock badge -->
+            <td class="share-filename">
+              {{.Filename}}
+              {{if ne .PasswordHash ""}}
+                <span class="badge badge-locked" title="Password protected">&thinsp;🔑</span>
+              {{end}}
+            </td>
+
+            <!-- Size -->
+            <td style="white-space:nowrap; color:var(--text-dim);">{{humanSize .Size}}</td>
+
+            <!-- Downloads -->
+            <td style="color:var(--text-dim);">
+              {{.Downloads}}{{if gt .MaxDownloads 0}}&thinsp;/&thinsp;{{.MaxDownloads}}{{end}}
+            </td>
+
+            <!-- Expiry date -->
+            <td style="white-space:nowrap; color:var(--text-dim); font-size:0.78rem;">
+              {{formatTime .ExpiresAt "02 Jan 06 15:04"}}
+            </td>
+
+            <!-- Time remaining -->
+            <td style="white-space:nowrap; font-size:0.78rem;">
+              {{if isExpired .}}
+                <span style="color:#e06060;">—</span>
+              {{else}}
+                {{humanDuration (until .ExpiresAt)}}
+              {{end}}
+            </td>
+
+            <!-- Status badge -->
+            <td>
+              {{if isExpired .}}
+                <span class="badge badge-expired">⏰ expired</span>
+              {{else if isExhausted .}}
+                <span class="badge badge-expired">🚫 exhausted</span>
+              {{else}}
+                <span class="badge badge-active">✓ active</span>
+              {{end}}
+            </td>
+
+            <!-- Download link -->
+            <td class="url-cell">
+              <a href="{{$.BaseURL}}/d/{{.ID}}" target="_blank"
+                 title="{{$.BaseURL}}/d/{{.ID}}">/d/{{slice .ID 0 8}}&hellip;</a>
+            </td>
+
+            <!-- Revoke button -->
+            <td>
+              <button class="btn-revoke"
+                      onclick="showConfirm(this)"
+                      data-name="{{.Filename}}"
+                      data-action="/admin/revoke/{{.ID}}?token={{$.Token}}">
+                Revoke
+              </button>
+            </td>
+          </tr>
+          {{end}}
+          </tbody>
+        </table>
+      </div>
+
+      {{else}}
+      <!-- Empty state -->
+      <div class="no-shares">
+        <span class="no-shares-glyph">🚪</span>
+        <p class="no-shares-title">The mountain is quiet</p>
+        <p style="margin-bottom:0.8rem;">No shares exist yet.</p>
+        <p>
+          <code style="font-family:'Courier New',monospace; color:var(--elvish);">durins-door share &lt;file&gt;</code>
+          — to open a portal.
+        </p>
+      </div>
+      {{end}}
+
+    </div><!-- /.admin-container -->
+  </div><!-- /.page-wrapper -->
+
+  <script>
+  /* ── Minimal stars ── */
+  (function () {
+    const cv = document.getElementById('stars-canvas');
+    if (!cv) return;
+    const cx = cv.getContext('2d');
+    let W, H, stars = [], t = 0;
+    function resize() {
+      W = cv.width = window.innerWidth;
+      H = cv.height = window.innerHeight;
+      stars = [];
+      const N = Math.min(Math.floor(W * H / 8000) + 25, 110);
+      for (let i = 0; i < N; i++) {
+        stars.push({ x: Math.random()*W, y: Math.random()*H*0.55,
+          r: Math.random()*1.1+0.15,
+          phase: Math.random()*Math.PI*2, speed: 0.004+Math.random()*0.01 });
+      }
+    }
+    function draw() {
+      cx.clearRect(0, 0, W, H); t++;
+      for (const s of stars) {
+        const lum = 0.22 + 0.6*(0.5+0.5*Math.sin(s.phase+t*s.speed));
+        cx.fillStyle = `rgba(200,193,172,${lum*0.8})`;
+        cx.beginPath(); cx.arc(s.x, s.y, s.r, 0, Math.PI*2); cx.fill();
+      }
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize, {passive:true});
+    resize(); draw();
+  })();
+
+  /* ── Revoke confirmation ── */
+  function showConfirm(btn) {
+    var overlay = document.getElementById('confirmOverlay');
+    var nameEl  = document.getElementById('confirmName');
+    var formEl  = document.getElementById('confirmForm');
+    nameEl.textContent = btn.getAttribute('data-name');
+    formEl.action      = btn.getAttribute('data-action');
+    overlay.classList.add('visible');
+    document.getElementById('cancelBtn').focus();
+  }
+
+  document.getElementById('cancelBtn').addEventListener('click', function () {
+    document.getElementById('confirmOverlay').classList.remove('visible');
+  });
+
+  document.getElementById('confirmOverlay').addEventListener('click', function (e) {
+    if (e.target === this) this.classList.remove('visible');
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape')
+      document.getElementById('confirmOverlay').classList.remove('visible');
+  });
+  </script>
+
+</body>
+</html>
