@@ -1,0 +1,22 @@
+# Binary
+durins-door
+durings-door
+durins-door.exe
+durins-door-cli
+durins-door-cli.exe
+dist/
+
+# Go
+*.test
+
+# Environment
+.env*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal

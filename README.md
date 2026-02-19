@@ -37,6 +37,35 @@ The web app and CLI share the same Supabase backend and are fully interoperable 
 - **Admin panel** — token-protected dashboard to manage and revoke shares
 - **Cross-platform** — works in the browser, terminal, or as a standalone server
 
+## Install
+
+### Download a binary (no Go required)
+
+Grab the latest release from [GitHub Releases](https://github.com/DesoCT/DurinsDoor/releases), or use the CLI:
+
+```bash
+# macOS (Apple Silicon)
+gh release download --repo DesoCT/DurinsDoor -p "durins-door-darwin-arm64"
+chmod +x durins-door-darwin-arm64 && mv durins-door-darwin-arm64 /usr/local/bin/durins-door
+
+# macOS (Intel)
+gh release download --repo DesoCT/DurinsDoor -p "durins-door-darwin-amd64"
+chmod +x durins-door-darwin-amd64 && mv durins-door-darwin-amd64 /usr/local/bin/durins-door
+
+# Linux (x86_64)
+gh release download --repo DesoCT/DurinsDoor -p "durins-door-linux-amd64"
+chmod +x durins-door-linux-amd64 && sudo mv durins-door-linux-amd64 /usr/local/bin/durins-door
+
+# Windows (PowerShell)
+gh release download --repo DesoCT/DurinsDoor -p "durins-door-windows-amd64.exe"
+```
+
+### Build from source
+
+```bash
+go install github.com/unisoniq/durins-door@latest
+```
+
 ## Quick Start
 
 ### Self-hosted server

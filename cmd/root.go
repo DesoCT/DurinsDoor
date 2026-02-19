@@ -9,6 +9,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version and BuildDate are set via ldflags at build time.
+var (
+	Version   = "dev"
+	BuildDate = "unknown"
+)
+
 // webFS is injected from main via SetWebFS.
 var webFS embed.FS
 
@@ -37,6 +43,11 @@ Usage:
   durins-door revoke <id>               # Revoke a share
   durins-door server                    # Start standalone server`,
 	SilenceUsage: true,
+	Version:      Version,
+}
+
+func init() {
+	rootCmd.SetVersionTemplate(fmt.Sprintf("durins-door %s (built %s)\n", Version, BuildDate))
 }
 
 // Execute runs the root command.
