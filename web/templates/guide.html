@@ -630,91 +630,271 @@ durins-door share <span class="code-flag">--tunnel</span> myfile.zip
 
       <div class="ms-rune-divider">· · · ᛏ · · ·</div>
 
-      <!-- ═══ CHAPTER VI: CLI Reference ═══ -->
+      <!-- ═══ CHAPTER VI: Install ═══ -->
       <section class="ms-section">
         <h2 class="ms-heading">
           <span class="ms-heading-rune">ᛏ</span>
-          CLI Reference
+          Install the CLI
         </h2>
         <p class="ms-body">
-          All incantations of the <em>durins-door</em> command and their effects.
+          Durin's Door comes as a <strong>single binary</strong> — no dependencies required.
+          Download it from <a href="https://github.com/DesoCT/DurinsDoor/releases" style="color:var(--elvish); text-decoration:underline;">GitHub Releases</a> or
+          use one of the incantations below.
         </p>
 
-        <!-- share command -->
-        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
-                  text-transform:uppercase; letter-spacing:0.12em; margin:1.5rem 0 0.5rem;">
-          durins-door share [flags] &lt;file&gt;
+        <div class="stone-code" data-label="Terminal · Install">
+          <code><span class="code-comment"># Linux (x86_64)</span>
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-amd64 -o durins-door
+chmod +x durins-door && sudo mv durins-door /usr/local/bin/
+
+<span class="code-comment"># Linux (ARM64 / Raspberry Pi)</span>
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-arm64 -o durins-door
+chmod +x durins-door && sudo mv durins-door /usr/local/bin/
+
+<span class="code-comment"># macOS (Apple Silicon)</span>
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-darwin-arm64 -o durins-door
+chmod +x durins-door && mv durins-door /usr/local/bin/
+
+<span class="code-comment"># macOS (Intel)</span>
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-darwin-amd64 -o durins-door
+chmod +x durins-door && mv durins-door /usr/local/bin/
+
+<span class="code-comment"># Windows (PowerShell)</span>
+Invoke-WebRequest -Uri https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-windows-amd64.exe -OutFile durins-door.exe
+
+<span class="code-comment"># Or with wget</span>
+wget -qO durins-door https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-amd64
+chmod +x durins-door && sudo mv durins-door /usr/local/bin/
+
+<span class="code-comment"># Or build from source</span>
+go install github.com/unisoniq/durins-door@latest</code>
+        </div>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᛈ · · ·</div>
+
+      <!-- ═══ CHAPTER VII: Server CLI Reference ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᛈ</span>
+          Server CLI Reference
+        </h2>
+        <p class="ms-body">
+          The self-hosted server encrypts files locally with AES-256-GCM, stores them on disk,
+          and serves them over HTTP with optional Cloudflare/ngrok tunneling.
+          All incantations of the <em>durins-door</em> command:
         </p>
-        <table class="rune-table">
-          <thead>
-            <tr>
-              <th>Flag</th>
-              <th>Default</th>
-              <th>Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="flag-cell">--expires, -e</td>
-              <td class="default-cell">24h</td>
-              <td class="desc-cell">How long the link lives. Accepts Go duration strings: 30m, 6h, 7d, etc.</td>
-            </tr>
-            <tr>
-              <td class="flag-cell">--password, -p</td>
-              <td class="default-cell">(none)</td>
-              <td class="desc-cell">Protect the download with a password. Stored as bcrypt hash.</td>
-            </tr>
-            <tr>
-              <td class="flag-cell">--max-downloads</td>
-              <td class="default-cell">0 (∞)</td>
-              <td class="desc-cell">Maximum number of downloads before the link self-seals.</td>
-            </tr>
-            <tr>
-              <td class="flag-cell">--server-url</td>
-              <td class="default-cell">auto-detect</td>
-              <td class="desc-cell">Override the base URL used in the printed share link.</td>
-            </tr>
-            <tr>
-              <td class="flag-cell">--tunnel</td>
-              <td class="default-cell">false</td>
-              <td class="desc-cell">Use Cloudflare Tunnel URL in the share link.</td>
-            </tr>
-          </tbody>
-        </table>
 
         <!-- server command -->
         <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
-                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.5rem 0 0.5rem;">
           durins-door server [flags]
         </p>
         <table class="rune-table">
           <thead>
-            <tr>
-              <th>Flag</th>
-              <th>Default</th>
-              <th>Description</th>
-            </tr>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
           </thead>
           <tbody>
             <tr>
               <td class="flag-cell">--port</td>
-              <td class="default-cell">8080</td>
-              <td class="desc-cell">Port to listen on.</td>
+              <td class="default-cell">8888</td>
+              <td class="desc-cell">HTTP server port</td>
             </tr>
             <tr>
-              <td class="flag-cell">--data-dir</td>
-              <td class="default-cell">~/.durins-door</td>
-              <td class="desc-cell">Directory for the SQLite database and encrypted file storage.</td>
-            </tr>
-            <tr>
-              <td class="flag-cell">--admin-token</td>
+              <td class="flag-cell">--token</td>
               <td class="default-cell">auto-generated</td>
-              <td class="desc-cell">Token for accessing the admin dashboard at /admin.</td>
+              <td class="desc-cell">Admin bearer token for the dashboard</td>
             </tr>
             <tr>
               <td class="flag-cell">--tunnel</td>
+              <td class="default-cell">true</td>
+              <td class="desc-cell">Auto-create Cloudflare/ngrok tunnel</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--no-tunnel</td>
               <td class="default-cell">false</td>
-              <td class="desc-cell">Start a Cloudflare Tunnel alongside the server.</td>
+              <td class="desc-cell">Disable automatic tunnel (LAN only)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- share command -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door share [flags] &lt;file&gt;
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--key</td>
+              <td class="default-cell">auto-generated</td>
+              <td class="desc-cell">Custom encryption key passphrase</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--expires</td>
+              <td class="default-cell">1h</td>
+              <td class="desc-cell">Expiry duration (1h, 24h, 7d)</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--password</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Require a password to download. Stored as bcrypt hash.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--max-downloads</td>
+              <td class="default-cell">0 (unlimited)</td>
+              <td class="desc-cell">Max number of downloads before the link seals</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--port</td>
+              <td class="default-cell">0 (auto)</td>
+              <td class="desc-cell">HTTP server port</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--no-tunnel</td>
+              <td class="default-cell">false</td>
+              <td class="desc-cell">Disable tunnel</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--register-only</td>
+              <td class="default-cell">false</td>
+              <td class="desc-cell">Encrypt and register without starting a server</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="stone-code" data-label="Terminal · Server Examples">
+          <code><span class="code-comment"># Start the server</span>
+durins-door server <span class="code-flag">--port</span> <span class="code-value">8888</span>
+
+<span class="code-comment"># Share a file (starts server + tunnel automatically)</span>
+durins-door share secret.pdf <span class="code-flag">--expires</span> <span class="code-value">24h</span> <span class="code-flag">--max-downloads</span> <span class="code-value">3</span>
+
+<span class="code-comment"># Password-protected, custom key</span>
+durins-door share mithril.zip <span class="code-flag">--password</span> <span class="code-value">mellon</span> <span class="code-flag">--key</span> <span class="code-value">speak-friend</span>
+
+<span class="code-comment"># One-time download link</span>
+durins-door share one-ring.bin <span class="code-flag">--max-downloads</span> <span class="code-value">1</span> <span class="code-flag">--expires</span> <span class="code-value">1h</span>
+
+<span class="code-comment"># List all active shares</span>
+durins-door list
+
+<span class="code-comment"># Revoke a share (full ID or prefix)</span>
+durins-door revoke abc123
+
+<span class="code-comment"># Check version</span>
+durins-door <span class="code-flag">--version</span></code>
+        </div>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᛞ · · ·</div>
+
+      <!-- ═══ CHAPTER VIII: Cloud CLI Reference ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᛞ</span>
+          Cloud CLI Reference
+        </h2>
+        <p class="ms-body">
+          The cloud CLI (<em>durins-door-cli</em>) encrypts locally and uploads ciphertext to Supabase Storage.
+          Zero-knowledge — the server never sees your key or plaintext. Fully interoperable with the web app.
+        </p>
+
+        <div class="stone-code" data-label="Terminal · Cloud CLI">
+          <code><span class="code-comment"># Authenticate (optional — enables list/revoke)</span>
+durins-door-cli login
+
+<span class="code-comment"># Share a file — returns a link with the key in the #fragment</span>
+durins-door-cli share secret.pdf
+durins-door-cli share secret.pdf <span class="code-flag">--expires</span> <span class="code-value">24h</span> <span class="code-flag">--max-downloads</span> <span class="code-value">5</span>
+durins-door-cli share secret.pdf <span class="code-flag">--password</span> <span class="code-value">mellon</span>
+
+<span class="code-comment"># Download and decrypt a shared file</span>
+durins-door-cli download <span class="code-value">"https://durins-door.vercel.app/share/abc123#keyhere"</span>
+durins-door-cli download <span class="code-value">"https://durins-door.vercel.app/share/abc123#keyhere"</span> <span class="code-flag">-o</span> <span class="code-value">myfile.pdf</span>
+
+<span class="code-comment"># List your shares (requires login)</span>
+durins-door-cli list
+
+<span class="code-comment"># Revoke a share (requires login)</span>
+durins-door-cli revoke abc123def456
+durins-door-cli revoke abc123def456 <span class="code-flag">--force</span>
+
+<span class="code-comment"># Peer-to-peer handshake — no shared URL needed</span>
+durins-door-cli receive                                  <span class="code-comment"># Displays a pairing code</span>
+durins-door-cli receive <span class="code-flag">-o</span> <span class="code-value">~/Downloads</span>                     <span class="code-comment"># Save to specific dir</span>
+durins-door-cli send file.pdf <span class="code-flag">--to</span> <span class="code-value">ARKENSTONE</span>            <span class="code-comment"># On the sender's machine</span>
+durins-door-cli send file.pdf <span class="code-flag">--to</span> <span class="code-value">ARKENSTONE</span> <span class="code-flag">--password</span> <span class="code-value">extra-secret</span>
+
+<span class="code-comment"># Log out</span>
+durins-door-cli logout</code>
+        </div>
+
+        <!-- share flags -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door-cli share [flags] &lt;file&gt;
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--password</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Password-protect the share</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--expires</td>
+              <td class="default-cell">(never)</td>
+              <td class="desc-cell">Expiry duration (24h, 7d, 30d)</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--max-downloads</td>
+              <td class="default-cell">0 (unlimited)</td>
+              <td class="desc-cell">Max download count</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--url</td>
+              <td class="default-cell">durins-door.vercel.app</td>
+              <td class="desc-cell">Base URL for the share link</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- send flags -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door-cli send &lt;file&gt; --to &lt;CODE&gt;
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--to</td>
+              <td class="default-cell">(required)</td>
+              <td class="desc-cell">Pairing code from the receiver</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--password</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Additional password layer on top of ECDH</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--expires</td>
+              <td class="default-cell">(never)</td>
+              <td class="desc-cell">Share expiry (24h, 7d)</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--max-downloads</td>
+              <td class="default-cell">0 (unlimited)</td>
+              <td class="desc-cell">Max download count</td>
             </tr>
           </tbody>
         </table>
