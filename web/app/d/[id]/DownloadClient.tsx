@@ -69,32 +69,53 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
       return
     }
 
-    // Password verification
+    // For password-protected shares, use server-side proxy to prevent bypass
     if (share.password_hash) {
       if (!password) { setPasswordError('Please enter the password.'); return }
       setDlState('verifying')
+
       try {
         const pwHash = await hashPassword(password)
-        const res = await fetch('/api/verify-password', {
+
+        setDlState('fetching')
+        setProgress(20)
+
+        // Download through the server-side proxy which verifies the password
+        // and fetches the blob using the service role key
+        const res = await fetch('/api/download', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ shareId: share.id, passwordHash: pwHash }),
         })
-        if (!res.ok) {
-          const data = await res.json()
+
+        if (res.status === 401) {
           setPasswordError('That is not the word. The door remains shut.')
           setDlState('idle')
           setProgress(0)
           return
         }
-      } catch {
-        setPasswordError('Failed to verify password. Try again.')
-        setDlState('idle')
-        return
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: 'Download failed' }))
+          throw new Error(data.error || 'Download failed')
+        }
+
+        setProgress(60)
+        setDlState('decrypting')
+
+        const buffer = await res.arrayBuffer()
+        const decrypted = await decryptFile(buffer, keyB64)
+        setProgress(100)
+
+        triggerDownload(decrypted, share.filename, share.content_type ?? 'application/octet-stream')
+        setDlState('done')
+      } catch (err: unknown) {
+        setDlState('error')
+        setErrorMsg(err instanceof Error ? err.message : 'Download failed')
       }
+      return
     }
 
-    // Download encrypted blob
+    // Non-password shares: download directly from Supabase Storage (public bucket)
     setDlState('fetching')
     setProgress(20)
     try {
@@ -113,11 +134,8 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
 
       setProgress(100)
 
-      // Increment download count
-      await supabase
-        .from('shares')
-        .update({ download_count: (share.download_count ?? 0) + 1 })
-        .eq('id', share.id)
+      // Increment download count atomically via RPC
+      await supabase.rpc('increment_download_count', { share_id: share.id })
 
       triggerDownload(decrypted, share.filename, share.content_type ?? 'application/octet-stream')
       setDlState('done')

@@ -2,7 +2,9 @@ package server
 
 import (
 	"log"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -82,7 +84,7 @@ func (rl *rateLimiter) allow(ip string) bool {
 
 func (rl *rateLimiter) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := r.RemoteAddr
+		ip := clientIP(r)
 		if !rl.allow(ip) {
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 			return
@@ -91,21 +93,80 @@ func (rl *rateLimiter) middleware(next http.Handler) http.Handler {
 	})
 }
 
-// adminAuthMiddleware enforces bearer token authentication on the admin endpoint.
+// clientIP extracts the client IP from the request, checking X-Forwarded-For
+// and X-Real-IP headers (for reverse proxy setups) before falling back to
+// RemoteAddr. The port is stripped so all connections from one IP share a bucket.
+func clientIP(r *http.Request) string {
+	// Check X-Forwarded-For first (may contain "client, proxy1, proxy2")
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		// First entry is the original client
+		if idx := strings.IndexByte(xff, ','); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
+		return strings.TrimSpace(xff)
+	}
+	// Check X-Real-IP
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	// Fall back to RemoteAddr, stripping the port
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr // IPv6 without port or unexpected format
+	}
+	return host
+}
+
+// securityHeaders adds standard security headers to every response.
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		// CSP: allow inline styles/scripts (needed for templates) but block external
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// adminAuthMiddleware enforces bearer token or cookie-based authentication.
 func adminAuthMiddleware(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if token == "" {
 			http.Error(w, "Admin not configured", http.StatusForbidden)
 			return
 		}
+		// Check Authorization header
 		auth := r.Header.Get("Authorization")
 		if auth == "Bearer "+token {
 			next.ServeHTTP(w, r)
 			return
 		}
-		// Also accept token as query param for browser convenience
-		if r.URL.Query().Get("token") == token {
+		// Check session cookie (set after first header-based auth)
+		if cookie, err := r.Cookie("admin_session"); err == nil && cookie.Value == token {
 			next.ServeHTTP(w, r)
+			return
+		}
+		// If token is provided as query param, set a session cookie and redirect
+		// to the clean URL (so the token doesn't linger in browser history/logs).
+		if r.URL.Query().Get("token") == token {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "admin_session",
+				Value:    token,
+				Path:     "/admin",
+				HttpOnly: true,
+				SameSite: http.SameSiteStrictMode,
+				MaxAge:   3600, // 1 hour
+			})
+			// Redirect to the same path without the token query param
+			cleanURL := *r.URL
+			q := cleanURL.Query()
+			q.Del("token")
+			cleanURL.RawQuery = q.Encode()
+			http.Redirect(w, r, cleanURL.String(), http.StatusSeeOther)
 			return
 		}
 		w.Header().Set("WWW-Authenticate", `Bearer realm="Durin's Door Admin"`)

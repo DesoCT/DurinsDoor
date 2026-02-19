@@ -146,6 +146,7 @@
 
       <!-- Download form -->
       <form method="POST" id="dlForm">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
 
         {{if .PasswordRequired}}
         <div class="password-section">

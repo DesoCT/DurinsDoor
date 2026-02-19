@@ -91,7 +91,7 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	s.httpServer = &http.Server{
-		Handler:      s.mux,
+		Handler:      securityHeaders(s.mux),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 0, // no write timeout for large file streams
 		IdleTimeout:  120 * time.Second,

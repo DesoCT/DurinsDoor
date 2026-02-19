@@ -1,13 +1,16 @@
 package server
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,6 +34,7 @@ type downloadData struct {
 	ExpiresIn         string
 	HumanSize         string
 	Error             string
+	CSRFToken         string
 }
 
 // adminData is passed to the admin page template.
@@ -128,6 +132,17 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
+		// Generate CSRF token and set as cookie
+		token := generateCSRFToken()
+		http.SetCookie(w, &http.Cookie{
+			Name:     "csrf_token",
+			Value:    token,
+			Path:     "/d/",
+			HttpOnly: true,
+			SameSite: http.SameSiteStrictMode,
+			MaxAge:   3600,
+		})
+		data.CSRFToken = token
 		s.renderTemplate(w, "download.html", data)
 		return
 	}
@@ -137,11 +152,20 @@ func (s *Server) handleDownload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate CSRF token
+	cookie, err := r.Cookie("csrf_token")
+	formToken := r.FormValue("csrf_token")
+	if err != nil || cookie.Value == "" || cookie.Value != formToken {
+		http.Error(w, "Invalid request", http.StatusForbidden)
+		return
+	}
+
 	// POST — handle password check + file delivery
 	if sh.PasswordHash != "" {
 		password := r.FormValue("password")
 		if err := bcrypt.CompareHashAndPassword([]byte(sh.PasswordHash), []byte(password)); err != nil {
 			data.PasswordWrong = true
+			data.CSRFToken = cookie.Value
 			s.renderTemplate(w, "download.html", data)
 			return
 		}
@@ -181,7 +205,7 @@ func (s *Server) streamDecryptedFile(w http.ResponseWriter, r *http.Request, sh 
 	}
 	defer f.Close()
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, sh.Filename))
+	w.Header().Set("Content-Disposition", sanitizedContentDisposition(sh.Filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
@@ -249,7 +273,7 @@ func (s *Server) handleRevoke(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"status": "revoked", "id": id})
 		return
 	}
-	http.Redirect(w, r, "/admin?token="+s.adminToken, http.StatusSeeOther)
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
 // handleAPIShares returns JSON list of active shares.
@@ -347,8 +371,30 @@ func (s *Server) handleFileStream(w http.ResponseWriter, r *http.Request) {
 	s.streamDecryptedFile(w, r, sh)
 }
 
-// copyBody discards the body to help with connection reuse.
-func copyBody(r *http.Request) {
-	io.Copy(io.Discard, r.Body)
-	r.Body.Close()
+// generateCSRFToken creates a random 32-byte hex token for CSRF protection.
+func generateCSRFToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		log.Printf("CSRF token generation error: %v", err)
+		return ""
+	}
+	return hex.EncodeToString(b)
+}
+
+// sanitizedContentDisposition builds a safe Content-Disposition header value.
+// It strips path separators, control characters, and uses RFC 6266 encoding.
+func sanitizedContentDisposition(filename string) string {
+	// Strip any directory path components
+	filename = filepath.Base(filename)
+	// Remove control characters and quotes
+	safe := strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f || r == '"' || r == '\\' {
+			return '_'
+		}
+		return r
+	}, filename)
+	if safe == "" || safe == "." {
+		safe = "download"
+	}
+	return mime.FormatMediaType("attachment", map[string]string{"filename": safe})
 }
