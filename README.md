@@ -39,25 +39,48 @@ The web app and CLI share the same Supabase backend and are fully interoperable 
 
 ## Install
 
-### Download a binary (no Go required)
-
-Grab the latest release from [GitHub Releases](https://github.com/DesoCT/DurinsDoor/releases), or use the CLI:
+### Quick install (curl)
 
 ```bash
+# Linux (x86_64)
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-amd64 -o durins-door
+chmod +x durins-door && sudo mv durins-door /usr/local/bin/
+
+# Linux (ARM64)
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-arm64 -o durins-door
+chmod +x durins-door && sudo mv durins-door /usr/local/bin/
+
 # macOS (Apple Silicon)
-gh release download --repo DesoCT/DurinsDoor -p "durins-door-darwin-arm64"
-chmod +x durins-door-darwin-arm64 && mv durins-door-darwin-arm64 /usr/local/bin/durins-door
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-darwin-arm64 -o durins-door
+chmod +x durins-door && mv durins-door /usr/local/bin/
 
 # macOS (Intel)
-gh release download --repo DesoCT/DurinsDoor -p "durins-door-darwin-amd64"
-chmod +x durins-door-darwin-amd64 && mv durins-door-darwin-amd64 /usr/local/bin/durins-door
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-darwin-amd64 -o durins-door
+chmod +x durins-door && mv durins-door /usr/local/bin/
+```
 
+### Quick install (wget)
+
+```bash
 # Linux (x86_64)
-gh release download --repo DesoCT/DurinsDoor -p "durins-door-linux-amd64"
-chmod +x durins-door-linux-amd64 && sudo mv durins-door-linux-amd64 /usr/local/bin/durins-door
+wget -qO durins-door https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-amd64
+chmod +x durins-door && sudo mv durins-door /usr/local/bin/
 
-# Windows (PowerShell)
-gh release download --repo DesoCT/DurinsDoor -p "durins-door-windows-amd64.exe"
+# Linux (ARM64)
+wget -qO durins-door https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-arm64
+chmod +x durins-door && sudo mv durins-door /usr/local/bin/
+```
+
+### Windows (PowerShell)
+
+```powershell
+Invoke-WebRequest -Uri https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-windows-amd64.exe -OutFile durins-door.exe
+```
+
+### GitHub CLI
+
+```bash
+gh release download --repo DesoCT/DurinsDoor -p "durins-door-linux-amd64"
 ```
 
 ### Build from source
@@ -66,17 +89,214 @@ gh release download --repo DesoCT/DurinsDoor -p "durins-door-windows-amd64.exe"
 go install github.com/unisoniq/durins-door@latest
 ```
 
+Or browse all binaries at [GitHub Releases](https://github.com/DesoCT/DurinsDoor/releases).
+
+---
+
+## CLI Reference — Self-hosted Server
+
+The standalone server binary (`durins-door`) encrypts files locally with AES-256-GCM, stores them on disk, and serves them over HTTP with optional Cloudflare/ngrok tunneling.
+
+### `durins-door server`
+
+Start the HTTP server to serve all existing shares.
+
+```bash
+durins-door server                    # Default: port 8888, auto-tunnel
+durins-door server --port 9000        # Custom port
+durins-door server --no-tunnel        # LAN only, no public tunnel
+durins-door server --token mysecret   # Set a specific admin token
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--port` | `8888` | HTTP server port |
+| `--token` | auto-generated | Admin bearer token |
+| `--tunnel` | `true` | Auto-create Cloudflare/ngrok tunnel |
+| `--no-tunnel` | `false` | Disable automatic tunnel |
+
+### `durins-door share <file>`
+
+Encrypt a file and start serving it immediately.
+
+```bash
+durins-door share myfile.zip                                    # 1h expiry (default)
+durins-door share myfile.zip --expires 24h                      # Expires in 24 hours
+durins-door share myfile.zip --expires 24h --max-downloads 3    # 3 downloads max
+durins-door share secret.pdf --password "mellon"                # Password-protected
+durins-door share secret.pdf --key "my-custom-passphrase"       # Custom encryption key
+durins-door share doc.pdf --register-only                       # Encrypt only, don't start server
+durins-door share doc.pdf --no-tunnel --port 9000               # LAN only on port 9000
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--key` | auto-generated | Custom encryption key passphrase |
+| `--expires` | `1h` | Expiry duration (e.g. `1h`, `24h`, `7d`) |
+| `--password` | none | Require a password to download |
+| `--max-downloads` | `0` (unlimited) | Max number of downloads |
+| `--port` | `0` (auto) | HTTP server port |
+| `--tunnel` | `true` | Auto-create public tunnel |
+| `--no-tunnel` | `false` | Disable tunnel |
+| `--register-only` | `false` | Encrypt and register without starting a server |
+
+### `durins-door list`
+
+List all active shares.
+
+```bash
+durins-door list
+```
+
+Output columns: ID, FILE, SIZE, DOWNLOADS, EXPIRES, STATUS
+
+### `durins-door revoke <share-id>`
+
+Revoke a share and delete its encrypted file. Supports prefix matching.
+
+```bash
+durins-door revoke abc123def456       # Full ID
+durins-door revoke abc1               # Prefix (if unambiguous)
+```
+
+### `durins-door --version`
+
+```bash
+durins-door --version                 # e.g. "durins-door v0.1.0 (built 2025-06-01T00:00:00Z)"
+```
+
+---
+
+## CLI Reference — Cloud Client (`durins-door-cli`)
+
+The cloud CLI (`cli/`) encrypts locally and uploads ciphertext to Supabase Storage. Zero-knowledge — the server never sees your key or plaintext.
+
+### `durins-door-cli login`
+
+Authenticate with Supabase (stores JWT in `~/.config/durins-door/auth.json`).
+
+```bash
+durins-door-cli login
+# Email: gandalf@shire.me
+# Password: ••••••••
+```
+
+### `durins-door-cli logout`
+
+Remove stored authentication token.
+
+```bash
+durins-door-cli logout
+```
+
+### `durins-door-cli share <file>`
+
+Encrypt and upload a file, returns a share link with the key in the URL fragment.
+
+```bash
+durins-door-cli share secret.pdf                                   # Basic share
+durins-door-cli share secret.pdf --expires 24h                     # Expires in 24h
+durins-door-cli share secret.pdf --expires 7d --max-downloads 5    # 7 days, 5 downloads
+durins-door-cli share secret.pdf --password "mellon"               # Password-protected
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--password` | none | Password-protect the share |
+| `--expires` | none (never) | Expiry duration (`24h`, `7d`, `30d`) |
+| `--max-downloads` | `0` (unlimited) | Max download count |
+| `--url` | `https://durins-door.vercel.app` | Base URL for the share link |
+
+Output: `https://durins-door.vercel.app/share/<id>#<key>`
+
+### `durins-door-cli download <url>`
+
+Download and decrypt a shared file.
+
+```bash
+durins-door-cli download "https://durins-door.vercel.app/share/abc123#keyhere"
+durins-door-cli download "https://durins-door.vercel.app/share/abc123#keyhere" -o myfile.pdf
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o, --output` | original filename | Output file path |
+
+### `durins-door-cli list`
+
+List your shares (requires `login`).
+
+```bash
+durins-door-cli list
+```
+
+Output columns: ID, FILE, SIZE, DOWNLOADS, EXPIRES, CREATED
+
+### `durins-door-cli revoke <id>`
+
+Delete a share you own (requires `login`).
+
+```bash
+durins-door-cli revoke abc123def456          # Interactive confirmation
+durins-door-cli revoke abc123def456 --force  # Skip confirmation
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-f, --force` | `false` | Skip confirmation prompt |
+
+### `durins-door-cli receive`
+
+Wait for a peer to send you a file via ECDH handshake.
+
+```bash
+durins-door-cli receive                # Displays a pairing code
+durins-door-cli receive -o ~/Downloads # Save to specific directory
+```
+
+1. Generates an ECDH P-256 keypair
+2. Displays a pairing code (share with the sender out-of-band)
+3. Both parties see a 3-word Tolkien verification phrase — speak it aloud to confirm no MITM
+4. File is downloaded and decrypted automatically
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o, --output` | `.` (current dir) | Directory to save the received file |
+
+### `durins-door-cli send <file> --to <CODE>`
+
+Send a file to a waiting receiver via ECDH handshake.
+
+```bash
+durins-door-cli send file.pdf --to ARKENSTONE
+durins-door-cli send file.pdf --to ARKENSTONE --password "extra-secret"
+durins-door-cli send file.pdf --to ARKENSTONE --expires 24h --max-downloads 1
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--to` | **(required)** | Pairing code from the receiver |
+| `--password` | none | Additional password layer on top of ECDH |
+| `--expires` | none | Share expiry (`24h`, `7d`) |
+| `--max-downloads` | `0` (unlimited) | Max download count |
+
+### Global flags (cloud CLI)
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--supabase-url` | built-in project URL | Supabase project URL |
+| `--supabase-key` | built-in anon key | Supabase anon/service key |
+
+---
+
 ## Quick Start
 
 ### Self-hosted server
 
 ```bash
-# Build
-make build
-
-# Run (auto-creates a public tunnel and generates an admin token)
-make run
-# or: ./durins-door server --port 8888
+# One-liner: download and run
+curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-amd64 -o durins-door && chmod +x durins-door
+./durins-door server --port 8888
 
 # Share a file directly
 ./durins-door share secret.pdf --expires 24h --max-downloads 5
@@ -87,15 +307,6 @@ make run
 # Revoke a share
 ./durins-door revoke <share-id>
 ```
-
-**Server flags:**
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--port` | `8888` | HTTP server port |
-| `--token` | auto-generated | Admin bearer token |
-| `--tunnel` | `true` | Auto-create public tunnel |
-| `--no-tunnel` | `false` | Disable automatic tunnel |
 
 ### Web app
 
@@ -112,9 +323,7 @@ npm run build    # Production build
 npm start        # Serve production build
 ```
 
-See [web/README.md](web/README.md) for full details.
-
-### CLI client
+### CLI client (cloud)
 
 ```bash
 cd cli
@@ -124,14 +333,12 @@ make build
 ./durins-door-cli share secret.pdf --expires 24h
 
 # Download a share
-./durins-door-cli download <share-id> --key <base64-key>
+./durins-door-cli download "https://durins-door.vercel.app/share/abc123#keyhere"
 
 # Peer-to-peer handshake
 ./durins-door-cli receive                           # Shows pairing code
 ./durins-door-cli send file.pdf --to ARKENSTONE     # On another device
 ```
-
-See [cli/README.md](cli/README.md) for full details.
 
 ## Supabase Setup
 
