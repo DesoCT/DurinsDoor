@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { encryptFile, hashPassword, humanSize, fileIcon } from '@/lib/crypto'
 import type { User } from '@supabase/supabase-js'
@@ -16,7 +15,6 @@ type PageState =
   | 'error'
 
 export default function HomePage() {
-  const router = useRouter()
   const [state, setState] = useState<PageState>('idle')
   const [file, setFile] = useState<File | null>(null)
   const [password, setPassword] = useState('')
@@ -196,14 +194,12 @@ export default function HomePage() {
     e.preventDefault()
     const dropped = e.dataTransfer.files[0]
     if (!dropped) return
-    if (!user) { router.push('/login'); return }
     if (dropped.size > 50 * 1024 * 1024) { setState('error'); setErrorMsg('File too large. Max 50 MB.'); return }
     setFile(dropped)
     setState('options')
   }
 
   function handleDoorClick() {
-    if (!user) { router.push('/login'); return }
     if (state === 'idle' || state === 'dragging') fileInputRef.current?.click()
   }
 
@@ -325,205 +321,230 @@ export default function HomePage() {
       <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileSelect} />
 
       <div className="page-wrapper">
+        <div className="home-layout">
 
-        {/* ── The Door ── */}
-        <div
-          ref={doorRef}
-          className={doorClasses}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={handleDoorClick}
-          role="button"
-          tabIndex={0}
-          aria-label="Durin's Door — click or drop a file to share"
-          onKeyDown={e => e.key === 'Enter' && handleDoorClick()}
-        >
-          <DoorSVG onStarClick={handleStarClick} />
-
-          {/* Upload hint overlay (shown on drag) */}
-          <div className="door-upload-overlay">
-            <div className="upload-overlay-text">
-              ✦ Drop to seal in the vault ✦<br />
-              <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{file ? humanSize(file.size) : ''}</span>
+          {/* ── Left Pillar ── */}
+          <nav className="pillar pillar-left fade-in-up fade-in-up-delay-3" aria-label="Left navigation">
+            <div className="pillar-runes">ᚠ ᚢ ᚱ ᚨ</div>
+            <div className="pillar-links">
+              <Link href="/gallery" className="pillar-link">
+                <span className="pillar-link-icon">ᚠ</span>
+                <span className="pillar-link-label">The Vaults</span>
+              </Link>
+              <Link href="/guide" className="pillar-link">
+                <span className="pillar-link-icon">ᚢ</span>
+                <span className="pillar-link-label">Lore-Book</span>
+              </Link>
             </div>
-          </div>
+            <div className="pillar-runes">ᛊ ᛏ ᛁ ᛜ</div>
+          </nav>
 
-          <div className="door-glow" />
-        </div>
+          {/* ── Center — Door + Title ── */}
+          <div className="center-column">
+            <div
+              ref={doorRef}
+              className={doorClasses}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={handleDoorClick}
+              role="button"
+              tabIndex={0}
+              aria-label="Durin's Door — click or drop a file to share"
+              onKeyDown={e => e.key === 'Enter' && handleDoorClick()}
+            >
+              <DoorSVG onStarClick={handleStarClick} />
 
-        {/* ── Title ── */}
-        <h1 className="site-title fade-in-up fade-in-up-delay-1">Durin&apos;s Door</h1>
-        <p className="site-subtitle fade-in-up fade-in-up-delay-2">
-          Encrypted. Temporary. Forgotten when the time comes.
-        </p>
-        <p className="speak-friend fade-in-up fade-in-up-delay-2">
-          ✦ &thinsp; Speak, friend, and enter — then download. &thinsp; ✦
-        </p>
-
-        {/* ── Upload options panel ── */}
-        {state === 'options' && file && (
-          <div className="options-panel fade-in-up">
-            <div className="options-file-name">
-              {fileIcon(file.name)} {file.name} <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>({humanSize(file.size)})</span>
-            </div>
-
-            <div className="options-grid">
-              <div>
-                <label className="form-label">Expiry</label>
-                <select className="rune-select" value={expiry} onChange={e => setExpiry(e.target.value)}>
-                  <option value="1h">1 hour</option>
-                  <option value="24h">24 hours</option>
-                  <option value="7d">7 days</option>
-                  <option value="30d">30 days</option>
-                  <option value="never">Never</option>
-                </select>
+              <div className="door-upload-overlay">
+                <div className="upload-overlay-text">
+                  ✦ Drop to seal in the vault ✦<br />
+                  <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>{file ? humanSize(file.size) : ''}</span>
+                </div>
               </div>
-              <div>
-                <label className="form-label">Max Downloads</label>
-                <select className="rune-select" value={maxDownloads} onChange={e => setMaxDownloads(e.target.value)}>
-                  <option value="0">Unlimited</option>
-                  <option value="1">1 (one-time)</option>
-                  <option value="5">5</option>
-                  <option value="10">10</option>
-                </select>
-              </div>
+
+              <div className="door-glow" />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">🔑 Password (optional)</label>
-              <input
-                type="password"
-                className="rune-input"
-                placeholder="Speak the word to protect…"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="rune-divider">· · ᚠ ᚢ ᚱ ᚨ · ·</div>
-
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button className="btn-silver" style={{ flex: 1 }} onClick={reset}>✕ Cancel</button>
-              <button className="btn-portal" style={{ flex: 2 }} onClick={handleUpload}>
-                <span className="btn-rune">🚪</span> Send Through the Door
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Uploading state ── */}
-        {state === 'uploading' && (
-          <div className="options-panel fade-in-up" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚗️</div>
-            <p style={{ fontFamily: 'Cinzel, serif', color: 'var(--elvish)', marginBottom: '0.5rem' }}>
-              {uploadProgress}
+            <h1 className="site-title fade-in-up fade-in-up-delay-1">Durin&apos;s Door</h1>
+            <p className="speak-friend fade-in-up fade-in-up-delay-2">
+              ✦ &thinsp; Speak, friend, and enter &thinsp; ✦
             </p>
-            <div className="progress-bar-track" style={{ marginTop: '1rem' }}>
-              <div className="progress-bar-fill" style={{ width: '100%', animation: 'progressGlow 1.5s ease-in-out infinite' }} />
-            </div>
-          </div>
-        )}
 
-        {/* ── Done state — share URL ── */}
-        {state === 'done' && (
-          <div className="options-panel fade-in-up">
-            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '2.5rem' }}>✦</span>
-              <p style={{ fontFamily: 'Cinzel, serif', color: 'var(--gold)', marginTop: '0.5rem' }}>
-                The door is open. Share the link.
-              </p>
-            </div>
-            <div className="share-url-box">
-              <input type="text" readOnly value={shareUrl} />
-              <button className="copy-btn" onClick={copyUrl}>
-                {copied ? '✓ Copied' : 'Copy'}
-              </button>
-            </div>
-            {password && (
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic', marginTop: '0.5rem' }}>
-                🔑 Password protected — share the password separately.
-              </p>
+            {/* ── Upload options panel ── */}
+            {state === 'options' && file && (
+              <div className="options-panel fade-in-up">
+                <div className="options-file-name">
+                  {fileIcon(file.name)} {file.name} <span style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>({humanSize(file.size)})</span>
+                </div>
+
+                {!user && (
+                  <div className="auth-hint">
+                    <Link href="/login" style={{ color: 'var(--silver)' }}>Sign in</Link> to upload, or use <Link href="/handshake/receive" style={{ color: 'var(--elvish)' }}>Handshake</Link> for anonymous transfer.
+                  </div>
+                )}
+
+                {user && (
+                  <>
+                    <div className="options-grid">
+                      <div>
+                        <label className="form-label">Expiry</label>
+                        <select className="rune-select" value={expiry} onChange={e => setExpiry(e.target.value)}>
+                          <option value="1h">1 hour</option>
+                          <option value="24h">24 hours</option>
+                          <option value="7d">7 days</option>
+                          <option value="30d">30 days</option>
+                          <option value="never">Never</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Max Downloads</label>
+                        <select className="rune-select" value={maxDownloads} onChange={e => setMaxDownloads(e.target.value)}>
+                          <option value="0">Unlimited</option>
+                          <option value="1">1 (one-time)</option>
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">🔑 Password (optional)</label>
+                      <input
+                        type="password"
+                        className="rune-input"
+                        placeholder="Speak the word to protect…"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="rune-divider">· · ᚠ ᚢ ᚱ ᚨ · ·</div>
+
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button className="btn-silver" style={{ flex: 1 }} onClick={reset}>✕ Cancel</button>
+                      <button className="btn-portal" style={{ flex: 2 }} onClick={handleUpload}>
+                        <span className="btn-rune">🚪</span> Send Through the Door
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {!user && (
+                  <button className="btn-silver" style={{ width: '100%', marginTop: '1rem' }} onClick={reset}>✕ Cancel</button>
+                )}
+              </div>
             )}
-            <div className="rune-divider">· · ᚱ ᛁ ᚾ · ·</div>
-            <button className="btn-silver" style={{ width: '100%' }} onClick={reset}>
-              ↩ Share Another File
-            </button>
-          </div>
-        )}
 
-        {/* ── Error state ── */}
-        {state === 'error' && (
-          <div className="options-panel fade-in-up">
-            <div className="error-card">
-              <span className="error-glyph">🚪</span>
-              <p className="error-title">The door would not yield</p>
-              <p className="error-message">{errorMsg}</p>
-              <button className="btn-silver" onClick={reset}>↩ Try Again</button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Idle — stats and navigation ── */}
-        {(state === 'idle' || state === 'dragging') && (
-          <>
-            <div className="stone-tablets fade-in-up fade-in-up-delay-3">
-              <div className="stone-tablet">
-                <span className="tablet-value" style={{ fontSize: '1.4rem', letterSpacing: '-0.03em' }}>AES</span>
-                <span className="tablet-label">256‑GCM</span>
-              </div>
-              <div className="stone-tablet">
-                <span className="tablet-value" style={{ fontSize: '1.6rem' }}>⏳</span>
-                <span className="tablet-label">Self‑Destruct</span>
-              </div>
-              <div className="stone-tablet">
-                <span className="tablet-value" style={{ fontSize: '1.4rem' }}>🔑</span>
-                <span className="tablet-label">Key in URL</span>
-              </div>
-            </div>
-
-            {/* Upload hint */}
-            <div className="fade-in-up fade-in-up-delay-4" style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-              {!user ? (
-                <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', fontStyle: 'italic' }}>
-                  <Link href="/login" style={{ color: 'var(--silver)' }}>Sign in</Link> to share files.
-                  Anyone with a link can download — no account needed.
+            {/* ── Uploading state ── */}
+            {state === 'uploading' && (
+              <div className="options-panel fade-in-up" style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚗️</div>
+                <p style={{ fontFamily: 'Cinzel, serif', color: 'var(--elvish)', marginBottom: '0.5rem' }}>
+                  {uploadProgress}
                 </p>
-              ) : (
-                <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                  Click the door or drag a file to share. Max 50 MB.
-                </p>
-              )}
-            </div>
+                <div className="progress-bar-track" style={{ marginTop: '1rem' }}>
+                  <div className="progress-bar-fill" style={{ width: '100%', animation: 'progressGlow 1.5s ease-in-out infinite' }} />
+                </div>
+              </div>
+            )}
 
-            {/* Hall navigation */}
-            <nav className="hall-nav fade-in-up fade-in-up-delay-4" aria-label="Site navigation">
-              <Link href="/gallery" className="hall-link">
-                <span className="hall-link-rune">ᚠ</span>The Vaults
-              </Link>
-              <Link href="/handshake/receive" className="hall-link" style={{ borderColor: 'rgba(107,197,255,0.3)', color: 'var(--elvish)' }}>
-                <span className="hall-link-rune">⇄</span>Handshake
-              </Link>
-              <Link href="/guide" className="hall-link">
-                <span className="hall-link-rune">ᚢ</span>The Lore-Book
+            {/* ── Done state — share URL ── */}
+            {state === 'done' && (
+              <div className="options-panel fade-in-up">
+                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '2.5rem' }}>✦</span>
+                  <p style={{ fontFamily: 'Cinzel, serif', color: 'var(--gold)', marginTop: '0.5rem' }}>
+                    The door is open. Share the link.
+                  </p>
+                </div>
+                <div className="share-url-box">
+                  <input type="text" readOnly value={shareUrl} />
+                  <button className="copy-btn" onClick={copyUrl}>
+                    {copied ? '✓ Copied' : 'Copy'}
+                  </button>
+                </div>
+                {password && (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', fontStyle: 'italic', marginTop: '0.5rem' }}>
+                    🔑 Password protected — share the password separately.
+                  </p>
+                )}
+                <div className="rune-divider">· · ᚱ ᛁ ᚾ · ·</div>
+                <button className="btn-silver" style={{ width: '100%' }} onClick={reset}>
+                  ↩ Share Another File
+                </button>
+              </div>
+            )}
+
+            {/* ── Error state ── */}
+            {state === 'error' && (
+              <div className="options-panel fade-in-up">
+                <div className="error-card">
+                  <span className="error-glyph">🚪</span>
+                  <p className="error-title">The door would not yield</p>
+                  <p className="error-message">{errorMsg}</p>
+                  <button className="btn-silver" onClick={reset}>↩ Try Again</button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Idle — stat runes + mobile nav below door ── */}
+            {(state === 'idle' || state === 'dragging') && (
+              <>
+                <div className="stat-runes fade-in-up fade-in-up-delay-3">
+                  <span className="stat-rune" title="AES-256-GCM encryption">🔐 AES‑256</span>
+                  <span className="stat-separator">·</span>
+                  <span className="stat-rune" title="Files self-destruct">⏳ Self‑Destruct</span>
+                  <span className="stat-separator">·</span>
+                  <span className="stat-rune" title="Decryption key in URL fragment">🔑 Key in URL</span>
+                </div>
+
+                {/* Mobile-only nav (hidden on desktop where pillars show) */}
+                <nav className="mobile-nav fade-in-up fade-in-up-delay-4" aria-label="Site navigation">
+                  <Link href="/gallery" className="mobile-nav-link">ᚠ Vaults</Link>
+                  <Link href="/handshake/receive" className="mobile-nav-link">⇄ Handshake</Link>
+                  <Link href="/guide" className="mobile-nav-link">ᚢ Lore</Link>
+                  {user ? (
+                    <button
+                      className="mobile-nav-link"
+                      onClick={() => createClient().auth.signOut().then(() => setUser(null))}
+                    >
+                      ↩ Sign Out
+                    </button>
+                  ) : (
+                    <Link href="/login" className="mobile-nav-link">🚪 Sign In</Link>
+                  )}
+                </nav>
+              </>
+            )}
+          </div>
+
+          {/* ── Right Pillar ── */}
+          <nav className="pillar pillar-right fade-in-up fade-in-up-delay-3" aria-label="Right navigation">
+            <div className="pillar-runes">ᛞ ᚢ ᚱ ᛁ</div>
+            <div className="pillar-links">
+              <Link href="/handshake/receive" className="pillar-link pillar-link-elvish">
+                <span className="pillar-link-icon">⇄</span>
+                <span className="pillar-link-label">Handshake</span>
               </Link>
               {user ? (
                 <button
-                  className="hall-link"
-                  style={{ background: 'none', cursor: 'pointer' }}
+                  className="pillar-link"
                   onClick={() => createClient().auth.signOut().then(() => setUser(null))}
                 >
-                  <span className="hall-link-rune">↩</span>Sign Out
+                  <span className="pillar-link-icon">↩</span>
+                  <span className="pillar-link-label">Sign Out</span>
                 </button>
               ) : (
-                <Link href="/login" className="hall-link">
-                  <span className="hall-link-rune">🚪</span>Sign In
+                <Link href="/login" className="pillar-link">
+                  <span className="pillar-link-icon">🚪</span>
+                  <span className="pillar-link-label">Sign In</span>
                 </Link>
               )}
-            </nav>
-          </>
-        )}
+            </div>
+            <div className="pillar-runes">ᚾ ᛊ ᛟ ᛗ</div>
+          </nav>
 
+        </div>
       </div>
     </>
   )
