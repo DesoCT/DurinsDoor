@@ -68,6 +68,8 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("/", loggingMiddleware(rl.middleware(http.HandlerFunc(s.handleHome))))
 	s.mux.Handle("/d/", loggingMiddleware(rl.middleware(http.HandlerFunc(s.handleDownload))))
 	s.mux.Handle("/dl/", loggingMiddleware(rl.middleware(http.HandlerFunc(s.handleFileStream))))
+	s.mux.Handle("/gallery", loggingMiddleware(rl.middleware(http.HandlerFunc(s.handleGallery))))
+	s.mux.Handle("/guide", loggingMiddleware(rl.middleware(http.HandlerFunc(s.handleGuide))))
 
 	// Admin routes (token-protected)
 	adminHandler := adminAuthMiddleware(s.adminToken, http.HandlerFunc(s.handleAdmin))

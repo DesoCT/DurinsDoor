@@ -43,6 +43,7 @@ var (
 	flagPort         int
 	flagTunnel       bool
 	flagNoTunnel     bool
+	flagRegisterOnly bool
 )
 
 func init() {
@@ -53,6 +54,7 @@ func init() {
 	shareCmd.Flags().IntVar(&flagPort, "port", 0, "HTTP server port (0 = auto)")
 	shareCmd.Flags().BoolVar(&flagTunnel, "tunnel", true, "Auto-create public tunnel via Cloudflare/ngrok (default: true)")
 	shareCmd.Flags().BoolVar(&flagNoTunnel, "no-tunnel", false, "Disable automatic tunnel")
+	shareCmd.Flags().BoolVar(&flagRegisterOnly, "register-only", false, "Encrypt and register the share but don't start a server")
 
 	rootCmd.AddCommand(shareCmd)
 }
@@ -145,7 +147,8 @@ func runShare(cmd *cobra.Command, args []string) error {
 
 	// Print share info
 	localURL := fmt.Sprintf("http://localhost:%d/d/%s", port, shareID)
-	adminURL := fmt.Sprintf("http://localhost:%d/admin?token=%s", port, adminToken)
+	localAdmin := fmt.Sprintf("http://localhost:%d/admin?token=%s", port, adminToken)
+	_, _ = localURL, localAdmin
 
 	fmt.Println()
 	printBanner()
@@ -158,9 +161,14 @@ func runShare(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  🔑 Password:    set\n")
 	}
 	fmt.Println()
-	fmt.Printf("  🔗 Local URL:   %s\n", localURL)
-	fmt.Printf("  🛡  Admin URL:   %s\n", adminURL)
+	fmt.Printf("  🔗 Share path:  /d/%s\n", shareID)
+	fmt.Printf("  🛡  Admin token: %s\n", adminToken)
 	fmt.Println()
+
+	if flagRegisterOnly {
+		fmt.Println("  ✅ Share registered. Start the server with: durins-door server")
+		return nil
+	}
 
 	// Auto-start tunnel unless disabled
 	var tun *tunnel.Tunnel

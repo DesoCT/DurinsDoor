@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Vaults — Durin's Door</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* ── Gallery layout ─────────────────────────── */
+    .gallery-wrapper {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      padding: 3rem 1.5rem 7rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ── Gallery header ─────────────────────────── */
+    .gallery-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .gallery-arch-icon {
+      display: block;
+      margin: 0 auto 1.5rem;
+      opacity: 0.75;
+    }
+    .gallery-title {
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: clamp(1.6rem, 4vw, 2.6rem);
+      font-weight: 700;
+      color: var(--gold);
+      text-shadow:
+        0 0 20px rgba(201,168,76,0.7),
+        0 0 50px rgba(201,168,76,0.3);
+      letter-spacing: 0.1em;
+      margin-bottom: 0.6rem;
+    }
+    .gallery-subtitle {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-style: italic;
+      color: var(--text-dim);
+      font-size: clamp(0.85rem, 2vw, 1rem);
+      letter-spacing: 0.04em;
+    }
+    .gallery-rune-bar {
+      margin: 1.5rem auto 0;
+      text-align: center;
+      color: var(--border-rune);
+      letter-spacing: 0.4em;
+      font-size: 0.8rem;
+      opacity: 0.7;
+    }
+
+    /* ── Scroll grid ──────────────────────────────── */
+    .scroll-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.8rem;
+      margin-top: 2.5rem;
+    }
+
+    /* ── Scroll card ─────────────────────────────── */
+    .scroll-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-rune);
+      border-radius: 8px;
+      padding: 0;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+      box-shadow:
+        0 4px 24px rgba(0,0,0,0.4),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .scroll-card::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 9px;
+      background: linear-gradient(135deg,
+        rgba(201,168,76,0.12) 0%,
+        transparent 50%,
+        rgba(107,197,255,0.06) 100%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .scroll-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(42,58,92,0.9);
+      box-shadow:
+        0 12px 40px rgba(0,0,0,0.5),
+        0 0 20px rgba(201,168,76,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    .scroll-card:hover::before {
+      opacity: 1;
+    }
+
+    /* Scroll top — decorative band */
+    .scroll-top {
+      background: linear-gradient(180deg,
+        rgba(30,44,72,0.6) 0%,
+        rgba(22,32,50,0.4) 100%);
+      border-bottom: 1px solid rgba(42,58,92,0.6);
+      padding: 0.9rem 1.2rem 0.7rem;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      position: relative;
+    }
+    .scroll-top::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent, rgba(201,168,76,0.3), transparent);
+    }
+    .scroll-file-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 6px rgba(201,168,76,0.3));
+    }
+    .scroll-filename {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+      word-break: break-all;
+      line-height: 1.3;
+      text-shadow: 0 0 8px rgba(201,168,76,0.3);
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Scroll body — stats */
+    .scroll-body {
+      padding: 1rem 1.2rem 1.1rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.7rem;
+    }
+
+    .scroll-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .scroll-stat-label {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+    }
+    .scroll-stat-value {
+      font-family: 'Cinzel', serif;
+      font-size: 0.88rem;
+      color: var(--silver-glow);
+    }
+    .scroll-stat-value.expiry-warn {
+      color: #e09050;
+    }
+    .scroll-stat-value.expiry-fresh {
+      color: #5dca85;
+    }
+
+    /* Scroll footer — rune divider + enter hint */
+    .scroll-footer {
+      border-top: 1px solid rgba(42,58,92,0.4);
+      padding: 0.55rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .scroll-rune-bar {
+      font-size: 0.65rem;
+      color: var(--border-rune);
+      letter-spacing: 0.3em;
+      opacity: 0.6;
+    }
+    .scroll-enter-hint {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-style: italic;
+      transition: color 0.2s ease;
+    }
+    .scroll-card:hover .scroll-enter-hint {
+      color: var(--silver);
+    }
+
+    /* Password badge on card */
+    .scroll-lock {
+      position: absolute;
+      top: 0.7rem;
+      right: 0.8rem;
+      font-size: 0.7rem;
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 3px;
+      padding: 0.15rem 0.4rem;
+      color: var(--gold-dim);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Empty state ─────────────────────────────── */
+    .vault-empty {
+      text-align: center;
+      padding: 5rem 2rem;
+      animation: fadeInUp 0.6s ease;
+    }
+    .vault-empty-glyph {
+      font-size: 5rem;
+      display: block;
+      margin-bottom: 1.5rem;
+      opacity: 0.25;
+      filter: drop-shadow(0 0 10px rgba(42,58,92,0.5));
+    }
+    .vault-empty-title {
+      font-family: 'Cinzel', serif;
+      font-size: 1.4rem;
+      color: var(--text-dim);
+      margin-bottom: 0.8rem;
+      letter-spacing: 0.06em;
+    }
+    .vault-empty-sub {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-style: italic;
+      color: var(--text-dim);
+      opacity: 0.6;
+      font-size: 0.9rem;
+      line-height: 1.8;
+    }
+
+    /* ── Nav bar ─────────────────────────────────── */
+    .gallery-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .gallery-back {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.08em;
+      opacity: 0.65;
+      transition: opacity 0.2s, color 0.2s;
+    }
+    .gallery-back:hover {
+      opacity: 1;
+      color: var(--silver);
+    }
+    .share-count-badge {
+      background: var(--bg-stone);
+      border: 1px solid var(--border-rune);
+      border-radius: 3px;
+      padding: 0.25rem 0.7rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+    }
+    .share-count-badge strong {
+      color: var(--gold);
+    }
+
+    /* Mountain silhouette */
+    .mountain-silhouette {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      pointer-events: none;
+      z-index: 1;
+      height: 130px;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="stars-canvas"></canvas>
+
+  <svg class="mountain-silhouette" viewBox="0 0 1400 130" preserveAspectRatio="none"
+       xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="mountFade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0a0e1a" stop-opacity="0"/>
+        <stop offset="55%" stop-color="#080c16" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#050810" stop-opacity="1"/>
+      </linearGradient>
+    </defs>
+    <path d="M0 130 L0 90 L60 55 L110 75 L170 32 L230 62 L290 20 L360 58
+             L430 35 L500 70 L570 15 L640 55 L700 30 L760 65 L830 10
+             L890 50 L950 25 L1020 60 L1080 38 L1140 70 L1200 22 L1260 55
+             L1320 40 L1380 68 L1400 50 L1400 130 Z"
+          fill="#07090f"/>
+    <rect x="0" y="0" width="1400" height="130" fill="url(#mountFade)"/>
+  </svg>
+
+  <div class="mist-layer"></div>
+
+  <div class="gallery-wrapper">
+
+    <!-- Nav bar -->
+    <nav class="gallery-nav">
+      <a href="/" class="gallery-back">← Durin's Door</a>
+      {{if .Shares}}
+      <span class="share-count-badge">
+        <strong>{{len .Shares}}</strong> artifact{{if gt (len .Shares) 1}}s{{end}} within the vault
+      </span>
+      {{end}}
+      <a href="/guide" class="gallery-back">The Lore-Book →</a>
+    </nav>
+
+    <!-- Header -->
+    <header class="gallery-header fade-in-up">
+      <svg class="gallery-arch-icon" width="72" height="88" viewBox="0 0 72 96"
+           xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <filter id="gs2">
+            <feGaussianBlur stdDeviation="2.5" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <path fill="#0d1525" stroke="#2a3a5c" stroke-width="1.2"
+              fill-rule="evenodd"
+              d="M 0 96 L 0 0 L 72 0 L 72 96 Z
+                 M 12 94 L 12 52 Q 10 16 36 10 Q 62 16 60 52 L 60 94 Z"/>
+        <path fill="#060910"
+              d="M 12 94 L 12 52 Q 10 16 36 10 Q 62 16 60 52 L 60 94 Z"/>
+        <path fill="none" stroke="var(--gold)" stroke-width="1"
+              opacity="0.7"
+              d="M 12 52 Q 10 16 36 10 Q 62 16 60 52"/>
+        <ellipse cx="36" cy="94" rx="22" ry="5" fill="rgba(107,197,255,0.25)">
+          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="2.8s" repeatCount="indefinite"/>
+        </ellipse>
+        <g filter="url(#gs2)" transform="translate(36,46)">
+          <line x1="0" y1="-14" x2="0"   y2="14"  stroke="var(--silver-glow)" stroke-width="1.1"/>
+          <line x1="-14" y1="0" x2="14"  y2="0"   stroke="var(--silver-glow)" stroke-width="1.1"/>
+          <line x1="-10" y1="-10" x2="10" y2="10" stroke="var(--silver-glow)" stroke-width="0.9"/>
+          <line x1="10"  y1="-10" x2="-10" y2="10" stroke="var(--silver-glow)" stroke-width="0.9"/>
+          <circle r="3" fill="var(--silver-glow)"/>
+        </g>
+      </svg>
+
+      <h1 class="gallery-title">The Vaults of Durin</h1>
+      <p class="gallery-subtitle">All open portals — artifacts awaiting their bearer</p>
+      <p class="gallery-rune-bar">· · ᚠ ᚢ ᚱ ᚨ ᛊ ᛏ ᛁ ᛜ · · </p>
+    </header>
+
+    <!-- Grid or empty state -->
+    {{if .Shares}}
+    <div class="scroll-grid" id="scrollGrid">
+      {{range .Shares}}
+      <a href="/d/{{.ID}}" class="scroll-card fade-in-up"
+         aria-label="Download {{.Filename}}">
+
+        {{if .PasswordHash}}
+        <span class="scroll-lock" title="Password protected">🔑</span>
+        {{end}}
+
+        <div class="scroll-top">
+          <span class="scroll-file-icon">📜</span>
+          <span class="scroll-filename">{{.Filename}}</span>
+        </div>
+
+        <div class="scroll-body">
+          <div class="scroll-stat">
+            <span class="scroll-stat-label">Size</span>
+            <span class="scroll-stat-value">{{humanSize .Size}}</span>
+          </div>
+          <div class="scroll-stat">
+            <span class="scroll-stat-label">Expires In</span>
+            <span class="scroll-stat-value
+              {{if lt (until .ExpiresAt) 3600000000000}}expiry-warn{{else}}expiry-fresh{{end}}">
+              {{humanDuration (until .ExpiresAt)}}
+            </span>
+          </div>
+          <div class="scroll-stat">
+            <span class="scroll-stat-label">Downloads</span>
+            <span class="scroll-stat-value">
+              {{if gt .MaxDownloads 0}}{{.Downloads}}&thinsp;/&thinsp;{{.MaxDownloads}}{{else}}{{.Downloads}} (∞){{end}}
+            </span>
+          </div>
+          <div class="scroll-stat">
+            <span class="scroll-stat-label">Encryption</span>
+            <span class="scroll-stat-value" style="font-size:0.75rem">AES-256-GCM</span>
+          </div>
+        </div>
+
+        <div class="scroll-footer">
+          <span class="scroll-rune-bar">· ᚱ ᛁ ᚾ ·</span>
+          <span class="scroll-enter-hint">Open →</span>
+        </div>
+
+      </a>
+      {{end}}
+    </div>
+    {{else}}
+    <div class="vault-empty fade-in-up">
+      <span class="vault-empty-glyph">🚪</span>
+      <h2 class="vault-empty-title">The halls are empty.</h2>
+      <p class="vault-empty-sub">
+        No artifacts remain within the vault.<br>
+        Share a file to light the dark.
+      </p>
+      <div style="margin-top:2.5rem;">
+        <code style="background:var(--bg-stone); border:1px solid var(--border-rune);
+                     border-radius:4px; padding:0.4rem 0.9rem; font-size:0.82rem;
+                     color:var(--elvish); font-family:'Courier New',monospace;">
+          durins-door share myfile.zip
+        </code>
+      </div>
+    </div>
+    {{end}}
+
+  </div><!-- /.gallery-wrapper -->
+
+  <script>
+  /* ── Minimal star field ─────────── */
+  (function () {
+    const cv = document.getElementById('stars-canvas');
+    if (!cv) return;
+    const cx = cv.getContext('2d');
+    let W, H, stars = [], frame = 0;
+    function resize() {
+      W = cv.width  = window.innerWidth;
+      H = cv.height = window.innerHeight;
+      stars = [];
+      const N = Math.min(Math.floor(W * H / 5000) + 50, 200);
+      for (let i = 0; i < N; i++) {
+        stars.push({
+          x: Math.random() * W,
+          y: Math.random() * H * 0.7,
+          r: Math.random() * 1.3 + 0.2,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.004 + Math.random() * 0.016,
+          blue: Math.random() < 0.2,
+        });
+      }
+    }
+    function draw() {
+      cx.clearRect(0, 0, W, H);
+      frame++;
+      for (const s of stars) {
+        const lum = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(s.phase + frame * s.speed));
+        cx.fillStyle = s.blue
+          ? `rgba(150,210,255,${lum})`
+          : `rgba(215,205,185,${lum * 0.85})`;
+        cx.beginPath();
+        cx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        cx.fill();
+      }
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
+    draw();
+  })();
+
+  /* ── Live countdown update ── */
+  (function () {
+    function humanDuration(ms) {
+      if (ms < 0) return 'expired';
+      const s = Math.floor(ms / 1000);
+      if (s < 60)  return s + 's';
+      const m = Math.floor(s / 60);
+      if (m < 60)  return m + 'm';
+      const h = Math.floor(m / 60);
+      const rm = m % 60;
+      if (h < 24)  return rm ? h + 'h' + rm + 'm' : h + 'h';
+      return Math.floor(h / 24) + 'd';
+    }
+
+    // Find all expiry stat values and update them every 30s
+    // The cards don't store the exact timestamp, so we use data-expires
+    // (not implemented here — just refresh page every 5 min for accuracy)
+    setTimeout(() => location.reload(), 300000);
+  })();
+  </script>
+
+</body>
+</html>

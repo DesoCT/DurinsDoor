@@ -40,6 +40,11 @@ type adminData struct {
 	BaseURL string
 }
 
+// galleryData is passed to the gallery page template.
+type galleryData struct {
+	Shares []*share.Share
+}
+
 func humanDuration(d time.Duration) string {
 	if d < 0 {
 		return "expired"
@@ -184,6 +189,22 @@ func (s *Server) streamDecryptedFile(w http.ResponseWriter, r *http.Request, sh 
 		// Can't change status after headers sent; log the error
 		log.Printf("decrypt stream error for %s: %v", sh.ID, err)
 	}
+}
+
+// handleGallery renders the public gallery of active shares.
+func (s *Server) handleGallery(w http.ResponseWriter, r *http.Request) {
+	shares, err := s.store.List(r.Context())
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	data := galleryData{Shares: shares}
+	s.renderTemplate(w, "gallery.html", data)
+}
+
+// handleGuide renders the static how-to-use guide page.
+func (s *Server) handleGuide(w http.ResponseWriter, r *http.Request) {
+	s.renderTemplate(w, "guide.html", nil)
 }
 
 // handleAdmin renders the admin dashboard.

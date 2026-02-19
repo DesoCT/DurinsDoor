@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Lore-Book — Durin's Door</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* ── Guide layout ───────────────────────────── */
+    .guide-wrapper {
+      position: relative;
+      z-index: 2;
+      min-height: 100vh;
+      padding: 3rem 1.5rem 8rem;
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    /* ── Nav ──────────────────────────────────────── */
+    .guide-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .guide-back {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.08em;
+      opacity: 0.65;
+      transition: opacity 0.2s, color 0.2s;
+    }
+    .guide-back:hover { opacity: 1; color: var(--silver); }
+
+    /* ── Parchment scroll container ──────────────── */
+    .manuscript {
+      background: linear-gradient(160deg,
+        #0f1828 0%,
+        #111c30 30%,
+        #0d1622 60%,
+        #0c1520 100%);
+      border: 1px solid rgba(42,58,92,0.7);
+      border-radius: 8px;
+      padding: 3rem clamp(1.5rem, 5vw, 4rem);
+      position: relative;
+      box-shadow:
+        0 0 0 1px rgba(42,58,92,0.4),
+        0 20px 60px rgba(0,0,0,0.7),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    /* Decorative corner flourishes */
+    .manuscript::before,
+    .manuscript::after {
+      content: '✦';
+      position: absolute;
+      font-size: 0.9rem;
+      color: rgba(201,168,76,0.25);
+    }
+    .manuscript::before { top: 1.2rem; left: 1.4rem; }
+    .manuscript::after  { bottom: 1.2rem; right: 1.4rem; }
+
+    /* Decorative gold border line */
+    .manuscript .ms-border-top,
+    .manuscript .ms-border-bot {
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 0%, rgba(201,168,76,0.35) 30%, rgba(107,197,255,0.25) 70%, transparent 100%);
+      margin: 0 -1rem 2.5rem;
+    }
+    .manuscript .ms-border-bot {
+      margin: 2.5rem -1rem 0;
+    }
+
+    /* ── Chapter titles ──────────────────────────── */
+    .ms-chapter {
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: clamp(1.3rem, 3.5vw, 2rem);
+      font-weight: 700;
+      color: var(--gold);
+      text-shadow: 0 0 15px rgba(201,168,76,0.5);
+      letter-spacing: 0.08em;
+      margin-bottom: 0.3rem;
+      text-align: center;
+    }
+    .ms-chapter-sub {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-style: italic;
+      color: var(--text-dim);
+      font-size: 0.88rem;
+      text-align: center;
+      margin-bottom: 2rem;
+      letter-spacing: 0.04em;
+    }
+    .ms-rune-divider {
+      text-align: center;
+      color: var(--border-rune);
+      letter-spacing: 0.35em;
+      font-size: 0.78rem;
+      margin: 2rem 0;
+      opacity: 0.7;
+    }
+
+    /* ── Section headings ────────────────────────── */
+    .ms-section {
+      margin-bottom: 2.5rem;
+    }
+    .ms-heading {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+      color: var(--silver-glow);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(42,58,92,0.6);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .ms-heading-rune {
+      color: var(--elvish);
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+
+    /* ── Body text ───────────────────────────────── */
+    .ms-body {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: clamp(0.9rem, 2vw, 1rem);
+      line-height: 1.9;
+      color: var(--text-primary);
+      margin-bottom: 1.2rem;
+    }
+    .ms-body em {
+      color: var(--silver-glow);
+      font-style: italic;
+    }
+    .ms-body strong {
+      color: var(--gold);
+      font-style: normal;
+    }
+
+    /* ── Code blocks (stone tablet style) ───────── */
+    .stone-code {
+      background: var(--bg-stone);
+      border: 1px solid var(--border-rune);
+      border-radius: 6px;
+      padding: 1.2rem 1.5rem;
+      margin: 1.2rem 0;
+      position: relative;
+      overflow-x: auto;
+    }
+    .stone-code::before {
+      content: attr(data-label);
+      position: absolute;
+      top: -0.5rem;
+      left: 1rem;
+      background: var(--bg-stone);
+      padding: 0 0.5rem;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .stone-code code {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      color: var(--elvish);
+      display: block;
+      white-space: pre;
+    }
+    .stone-code .code-comment {
+      color: var(--text-dim);
+      font-style: italic;
+    }
+    .stone-code .code-flag {
+      color: var(--gold);
+    }
+    .stone-code .code-value {
+      color: #a0e090;
+    }
+
+    /* ── Feature list ────────────────────────────── */
+    .ms-list {
+      list-style: none;
+      margin: 0.8rem 0 1.2rem;
+      padding: 0;
+    }
+    .ms-list li {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      padding: 0.4rem 0 0.4rem 1.8rem;
+      position: relative;
+      line-height: 1.7;
+      border-bottom: 1px solid rgba(42,58,92,0.2);
+    }
+    .ms-list li:last-child { border-bottom: none; }
+    .ms-list li::before {
+      content: attr(data-rune);
+      position: absolute;
+      left: 0;
+      color: var(--elvish);
+      font-size: 0.85rem;
+      opacity: 0.8;
+    }
+    .ms-list li strong { color: var(--gold); }
+
+    /* ── CLI reference table ──────────────────────── */
+    .rune-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2rem 0;
+      font-size: 0.85rem;
+    }
+    .rune-table th {
+      background: rgba(17,24,39,0.8);
+      color: var(--text-dim);
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 0.6rem 0.9rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-rune);
+    }
+    .rune-table td {
+      padding: 0.6rem 0.9rem;
+      border-bottom: 1px solid rgba(42,58,92,0.3);
+      vertical-align: top;
+    }
+    .rune-table tr:last-child td { border-bottom: none; }
+    .rune-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .rune-table .flag-cell {
+      font-family: 'Courier New', monospace;
+      color: var(--gold);
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    .rune-table .default-cell {
+      font-family: 'Courier New', monospace;
+      color: #a0e090;
+      font-size: 0.78rem;
+    }
+    .rune-table .desc-cell {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-style: italic;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    /* ── Security shield box ──────────────────────── */
+    .shield-box {
+      background: rgba(39,174,96,0.06);
+      border: 1px solid rgba(39,174,96,0.2);
+      border-radius: 6px;
+      padding: 1.2rem 1.5rem;
+      margin: 1.2rem 0;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .shield-box-icon {
+      font-size: 1.6rem;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 6px rgba(39,174,96,0.4));
+    }
+    .shield-box-text {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: 0.9rem;
+      color: rgba(160,200,140,0.9);
+      line-height: 1.8;
+    }
+    .shield-box-text strong {
+      color: #5dca85;
+    }
+
+    /* ── Steps ───────────────────────────────────── */
+    .ms-steps {
+      counter-reset: step-counter;
+      list-style: none;
+      padding: 0;
+      margin: 1rem 0;
+    }
+    .ms-steps li {
+      counter-increment: step-counter;
+      display: flex;
+      gap: 1.2rem;
+      align-items: flex-start;
+      padding: 0.9rem 0;
+      border-bottom: 1px solid rgba(42,58,92,0.25);
+    }
+    .ms-steps li:last-child { border-bottom: none; }
+    .ms-steps li::before {
+      content: counter(step-counter);
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      color: var(--gold);
+      background: rgba(201,168,76,0.1);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 50%;
+      width: 2rem;
+      height: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
+    .ms-steps li .step-body {
+      font-family: 'IM Fell English', Georgia, serif;
+      font-size: 0.93rem;
+      line-height: 1.8;
+      color: var(--text-primary);
+    }
+    .ms-steps li .step-body strong { color: var(--silver-glow); }
+
+    /* ── Footer of manuscript ────────────────────── */
+    .ms-footer-quote {
+      text-align: center;
+      font-family: 'IM Fell English', Georgia, serif;
+      font-style: italic;
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      line-height: 1.8;
+      margin-top: 1rem;
+      opacity: 0.65;
+    }
+
+    /* Mountain silhouette */
+    .mountain-silhouette {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      pointer-events: none;
+      z-index: 1;
+      height: 130px;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="stars-canvas"></canvas>
+
+  <svg class="mountain-silhouette" viewBox="0 0 1400 130" preserveAspectRatio="none"
+       xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="mountFade" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0a0e1a" stop-opacity="0"/>
+        <stop offset="55%" stop-color="#080c16" stop-opacity="0.7"/>
+        <stop offset="100%" stop-color="#050810" stop-opacity="1"/>
+      </linearGradient>
+    </defs>
+    <path d="M0 130 L0 90 L60 55 L110 75 L170 32 L230 62 L290 20 L360 58
+             L430 35 L500 70 L570 15 L640 55 L700 30 L760 65 L830 10
+             L890 50 L950 25 L1020 60 L1080 38 L1140 70 L1200 22 L1260 55
+             L1320 40 L1380 68 L1400 50 L1400 130 Z"
+          fill="#07090f"/>
+    <rect x="0" y="0" width="1400" height="130" fill="url(#mountFade)"/>
+  </svg>
+
+  <div class="mist-layer"></div>
+
+  <div class="guide-wrapper">
+
+    <!-- Nav -->
+    <nav class="guide-nav">
+      <a href="/" class="guide-back">← Durin's Door</a>
+      <a href="/gallery" class="guide-back">The Vaults →</a>
+    </nav>
+
+    <!-- Manuscript -->
+    <article class="manuscript fade-in-up">
+
+      <div class="ms-border-top"></div>
+
+      <!-- Title -->
+      <div style="text-align:center; margin-bottom:2rem;">
+        <svg width="48" height="60" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"
+             style="display:block; margin:0 auto 1.2rem; opacity:0.8;" aria-hidden="true">
+          <defs>
+            <filter id="gs3">
+              <feGaussianBlur stdDeviation="2" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <path fill="#0d1525" stroke="#2a3a5c" stroke-width="1"
+                fill-rule="evenodd"
+                d="M 0 64 L 0 0 L 48 0 L 48 64 Z
+                   M 8 62 L 8 34 Q 7 8 24 4 Q 41 8 40 34 L 40 62 Z"/>
+          <path fill="#060910"
+                d="M 8 62 L 8 34 Q 7 8 24 4 Q 41 8 40 34 L 40 62 Z"/>
+          <path fill="none" stroke="var(--gold)" stroke-width="0.8"
+                d="M 8 34 Q 7 8 24 4 Q 41 8 40 34"/>
+          <g filter="url(#gs3)" transform="translate(24,30)">
+            <line x1="0" y1="-10" x2="0"  y2="10" stroke="var(--silver-glow)" stroke-width="0.9"/>
+            <line x1="-10" y1="0" x2="10" y2="0"  stroke="var(--silver-glow)" stroke-width="0.9"/>
+            <line x1="-7"  y1="-7" x2="7" y2="7"  stroke="var(--silver-glow)" stroke-width="0.8"/>
+            <line x1="7"  y1="-7" x2="-7" y2="7"  stroke="var(--silver-glow)" stroke-width="0.8"/>
+            <circle r="2.5" fill="var(--silver-glow)"/>
+          </g>
+        </svg>
+        <h1 class="ms-chapter">The Lore-Book</h1>
+        <p class="ms-chapter-sub">
+          A treatise on the ancient art of encrypted passage &amp; swift delivery
+        </p>
+        <p style="text-align:center; color:var(--border-rune); letter-spacing:0.35em; font-size:0.75rem; opacity:0.6; margin-top:0.8rem;">
+          · · ᛞ ᚢ ᚱ ᛁ ᚾ · ᚠ ᚱᛖᛟᚾᛞ · ᛖᚾᛏᛖᚱ · ·
+        </p>
+      </div>
+
+      <!-- ═══ CHAPTER I: What is Durin's Door ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᚠ</span>
+          What is Durin's Door?
+        </h2>
+        <p class="ms-body">
+          <strong>Durin's Door</strong> is a self-hosted, encrypted file-sharing tool.
+          Like the ancient gate of Moria — it reveals itself only to those who know the word —
+          Durin's Door encrypts your files before they ever touch disk, shares them via
+          a temporary link, and then forgets them entirely when the time comes.
+        </p>
+        <p class="ms-body">
+          No cloud. No accounts. No logs. No breadcrumbs left in the mountain.
+          Only the link, the password (if you choose one), and the countdown.
+        </p>
+        <ul class="ms-list">
+          <li data-rune="🔐"><strong>Encrypted at rest</strong> — AES-256-GCM encryption, key never stored alongside the file</li>
+          <li data-rune="⏳"><strong>Auto-expiry</strong> — links vanish after the time you set</li>
+          <li data-rune="🔢"><strong>Download limits</strong> — restrict to N downloads and the door seals itself</li>
+          <li data-rune="🔑"><strong>Optional password</strong> — add a second layer for sensitive cargo</li>
+          <li data-rune="🌐"><strong>Auto-tunneling</strong> — built-in Cloudflare tunnel for instant public URLs</li>
+          <li data-rune="🚫"><strong>Zero logs</strong> — no analytics, no tracking, no fingerprints</li>
+        </ul>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᚢ · · ·</div>
+
+      <!-- ═══ CHAPTER II: How to Share ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᚢ</span>
+          How to Share a File
+        </h2>
+        <p class="ms-body">
+          To place an artifact in the vault, invoke the <em>share</em> command.
+          The door will encrypt your file, store it, and carve a link in stone.
+        </p>
+
+        <ol class="ms-steps">
+          <li>
+            <div class="step-body">
+              <strong>Basic share</strong> — share a file with default settings (24h expiry)
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Set expiry</strong> — choose how long the link survives
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Password-protect</strong> — require the bearer to speak the word
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Limit downloads</strong> — the door seals after N retrievals
+            </div>
+          </li>
+        </ol>
+
+        <div class="stone-code" data-label="Terminal · Share Examples">
+          <code><span class="code-comment"># Share with default settings (24h, unlimited downloads)</span>
+durins-door share secret-plans.pdf
+
+<span class="code-comment"># Share for 7 days</span>
+durins-door share <span class="code-flag">--expires</span> <span class="code-value">7d</span> archive.tar.gz
+
+<span class="code-comment"># Require a password</span>
+durins-door share <span class="code-flag">--password</span> <span class="code-value">mellon</span> mithril.zip
+
+<span class="code-comment"># One-time download link (self-destructs after 1 download)</span>
+durins-door share <span class="code-flag">--max-downloads</span> <span class="code-value">1</span> one-ring.bin
+
+<span class="code-comment"># Everything at once</span>
+durins-door share <span class="code-flag">--expires</span> <span class="code-value">48h</span> <span class="code-flag">--password</span> <span class="code-value">shire</span> <span class="code-flag">--max-downloads</span> <span class="code-value">3</span> precious.dat</code>
+        </div>
+
+        <p class="ms-body">
+          The command prints the full download URL. Share it with your fellowship.
+          Once the time expires — or the download limit is reached — the link
+          dissolves into shadow and the encrypted file is purged.
+        </p>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᚱ · · ·</div>
+
+      <!-- ═══ CHAPTER III: How to Download ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᚱ</span>
+          How to Download
+        </h2>
+        <p class="ms-body">
+          The bearer of the link visits the download page. The door presents what
+          lies within — filename, size, expiry. If a password was set, the door
+          asks for the word. Speak truly, and it opens.
+        </p>
+        <ol class="ms-steps">
+          <li>
+            <div class="step-body">
+              <strong>Click the link</strong> — opens the download page in your browser
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Enter password</strong> (if required) — the door will not yield without the word
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Click "Open the Door &amp; Download"</strong> — the file streams
+              decrypted directly to your device. It is never stored on the server
+              in plaintext.
+            </div>
+          </li>
+        </ol>
+
+        <div class="stone-code" data-label="Direct Download · CLI">
+          <code><span class="code-comment"># Download via link (no password)</span>
+curl -L "https://your-server/dl/abc123" -o output.pdf
+
+<span class="code-comment"># Password-protected (use the /d/ page in a browser)</span>
+<span class="code-comment"># or pipe with curl + form post if scripting</span>
+curl -L -d "password=mellon" "https://your-server/d/abc123" -o output.zip</code>
+        </div>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᚨ · · ·</div>
+
+      <!-- ═══ CHAPTER IV: Security ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᚨ</span>
+          Security &amp; Encryption
+        </h2>
+
+        <div class="shield-box">
+          <span class="shield-box-icon">🛡️</span>
+          <p class="shield-box-text">
+            <strong>AES-256-GCM</strong> encryption. Every file gets a unique 256-bit key,
+            generated fresh at upload time. The key is stored in the database separately
+            from the encrypted blob — neither alone is sufficient to recover the file.
+            Passwords are hashed with <strong>bcrypt</strong> (cost 14).
+          </p>
+        </div>
+
+        <ul class="ms-list">
+          <li data-rune="🔐">
+            <strong>AES-256-GCM</strong> — authenticated encryption. Detects tampering.
+            Files cannot be silently corrupted.
+          </li>
+          <li data-rune="🎲">
+            <strong>Unique key per share</strong> — compromise of one share does not
+            expose any other.
+          </li>
+          <li data-rune="🧂">
+            <strong>Bcrypt passwords</strong> — even if the database is taken, raw passwords
+            cannot be recovered.
+          </li>
+          <li data-rune="🌊">
+            <strong>Streaming decryption</strong> — the plaintext is never written to disk
+            during download. It flows directly from the decryption engine to your browser.
+          </li>
+          <li data-rune="💀">
+            <strong>Auto-expiry &amp; purge</strong> — expired files are deleted from disk
+            on a regular cleanup cycle. Gone means gone.
+          </li>
+          <li data-rune="📵">
+            <strong>No logs</strong> — the server does not log IP addresses, user agents,
+            or what files were accessed.
+          </li>
+        </ul>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᛊ · · ·</div>
+
+      <!-- ═══ CHAPTER V: Cloudflare Tunnel ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᛊ</span>
+          Auto-Tunneling via Cloudflare
+        </h2>
+        <p class="ms-body">
+          Durin's Door can open a <em>Cloudflare Tunnel</em> automatically — carving
+          a passage through your firewall without requiring port forwarding, DNS
+          changes, or a public IP. The tunnel gives you an instant <code style="font-family:'Courier New'; color:var(--elvish); font-size:0.88em">trycloudflare.com</code>
+          URL you can share immediately.
+        </p>
+
+        <div class="stone-code" data-label="Terminal · With Tunnel">
+          <code><span class="code-comment"># Start the server with auto-tunnel enabled</span>
+durins-door server <span class="code-flag">--tunnel</span>
+
+<span class="code-comment"># Share a file — link uses the public Cloudflare URL</span>
+durins-door share <span class="code-flag">--tunnel</span> myfile.zip
+
+<span class="code-comment"># The output shows both URLs:</span>
+<span class="code-comment">#   Local:   http://localhost:8080/d/abc123</span>
+<span class="code-comment">#   Public:  https://random-name.trycloudflare.com/d/abc123</span></code>
+        </div>
+
+        <p class="ms-body">
+          The tunnel requires <code style="font-family:'Courier New'; color:var(--elvish); font-size:0.88em">cloudflared</code>
+          to be installed. If it is not found, the server runs locally only.
+          No Cloudflare account is required for the quick-tunnel variant.
+        </p>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᛏ · · ·</div>
+
+      <!-- ═══ CHAPTER VI: CLI Reference ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᛏ</span>
+          CLI Reference
+        </h2>
+        <p class="ms-body">
+          All incantations of the <em>durins-door</em> command and their effects.
+        </p>
+
+        <!-- share command -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.5rem 0 0.5rem;">
+          durins-door share [flags] &lt;file&gt;
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr>
+              <th>Flag</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--expires, -e</td>
+              <td class="default-cell">24h</td>
+              <td class="desc-cell">How long the link lives. Accepts Go duration strings: 30m, 6h, 7d, etc.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--password, -p</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Protect the download with a password. Stored as bcrypt hash.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--max-downloads</td>
+              <td class="default-cell">0 (∞)</td>
+              <td class="desc-cell">Maximum number of downloads before the link self-seals.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--server-url</td>
+              <td class="default-cell">auto-detect</td>
+              <td class="desc-cell">Override the base URL used in the printed share link.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--tunnel</td>
+              <td class="default-cell">false</td>
+              <td class="desc-cell">Use Cloudflare Tunnel URL in the share link.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- server command -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door server [flags]
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr>
+              <th>Flag</th>
+              <th>Default</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--port</td>
+              <td class="default-cell">8080</td>
+              <td class="desc-cell">Port to listen on.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--data-dir</td>
+              <td class="default-cell">~/.durins-door</td>
+              <td class="desc-cell">Directory for the SQLite database and encrypted file storage.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--admin-token</td>
+              <td class="default-cell">auto-generated</td>
+              <td class="desc-cell">Token for accessing the admin dashboard at /admin.</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--tunnel</td>
+              <td class="default-cell">false</td>
+              <td class="desc-cell">Start a Cloudflare Tunnel alongside the server.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="ms-border-bot"></div>
+
+      <!-- Footer quote -->
+      <p class="ms-footer-quote">
+        "Not all those who wander are lost." — J.R.R. Tolkien<br>
+        <span style="font-size:0.78rem; display:block; margin-top:0.4rem; letter-spacing:0.25em; opacity:0.5;">
+          · · ᛁ ᛜ ᛞ ᚢ ᚱ ᛁ ᚾ · ·
+        </span>
+      </p>
+
+    </article><!-- /.manuscript -->
+
+    <!-- Subtle nav footer -->
+    <div style="text-align:center; margin-top:2rem; display:flex; gap:2rem; justify-content:center; flex-wrap:wrap;">
+      <a href="/" style="color:var(--text-dim); text-decoration:none; font-size:0.8rem;
+                         font-family:'Cinzel',serif; letter-spacing:0.1em; opacity:0.55;
+                         transition:opacity 0.2s;" onmouseover="this.style.opacity='1'"
+         onmouseout="this.style.opacity='0.55'">← The Door</a>
+      <a href="/gallery" style="color:var(--text-dim); text-decoration:none; font-size:0.8rem;
+                                font-family:'Cinzel',serif; letter-spacing:0.1em; opacity:0.55;
+                                transition:opacity 0.2s;" onmouseover="this.style.opacity='1'"
+         onmouseout="this.style.opacity='0.55'">The Vaults →</a>
+    </div>
+
+  </div><!-- /.guide-wrapper -->
+
+  <script>
+  /* ── Minimal star field ─────────── */
+  (function () {
+    const cv = document.getElementById('stars-canvas');
+    if (!cv) return;
+    const cx = cv.getContext('2d');
+    let W, H, stars = [], frame = 0;
+    function resize() {
+      W = cv.width  = window.innerWidth;
+      H = cv.height = window.innerHeight;
+      stars = [];
+      const N = Math.min(Math.floor(W * H / 5500) + 40, 180);
+      for (let i = 0; i < N; i++) {
+        stars.push({
+          x: Math.random() * W,
+          y: Math.random() * H * 0.65,
+          r: Math.random() * 1.2 + 0.18,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.004 + Math.random() * 0.015,
+          blue: Math.random() < 0.2,
+        });
+      }
+    }
+    function draw() {
+      cx.clearRect(0, 0, W, H);
+      frame++;
+      for (const s of stars) {
+        const lum = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(s.phase + frame * s.speed));
+        cx.fillStyle = s.blue
+          ? `rgba(150,210,255,${lum})`
+          : `rgba(215,205,185,${lum * 0.85})`;
+        cx.beginPath();
+        cx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        cx.fill();
+      }
+      requestAnimationFrame(draw);
+    }
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
+    draw();
+  })();
+  </script>
+
+</body>
+</html>
