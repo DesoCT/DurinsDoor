@@ -1687,7 +1687,7 @@ a:hover { color: var(--silver-glow); }
   border-color: var(--border-rune);
 }
 
-/* ── Balrog Whip idle animation ── */
+/* ── Balrog Whip canvas ── */
 .balrog-whip-canvas {
   position: fixed;
   top: 0;
@@ -1696,6 +1696,150 @@ a:hover { color: var(--silver-glow); }
   height: 100vh;
   pointer-events: none;
   z-index: 9998;
+}
+
+/* ── Whip Game Prompt ── */
+.whip-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  animation: whipPromptFadeIn 0.4s ease;
+}
+
+@keyframes whipPromptFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.whip-prompt-card {
+  background: linear-gradient(135deg, rgba(20, 12, 8, 0.97), rgba(10, 6, 4, 0.98));
+  border: 1px solid rgba(255, 80, 0, 0.25);
+  border-radius: 12px;
+  padding: 2rem 2.5rem;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(255, 60, 0, 0.15), inset 0 0 30px rgba(255, 40, 0, 0.05);
+}
+
+.whip-prompt-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.whip-prompt-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.4rem;
+  color: var(--gold, #c9a84c);
+  margin-bottom: 0.75rem;
+}
+
+.whip-prompt-desc {
+  font-size: 0.85rem;
+  color: rgba(200, 180, 140, 0.8);
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.whip-prompt-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.whip-prompt-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: rgba(200, 180, 150, 0.7);
+}
+
+.whip-prompt-rule-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.whip-prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(200, 60, 0, 0.3), rgba(180, 40, 0, 0.2));
+  border: 1px solid rgba(255, 100, 0, 0.4);
+  color: rgba(255, 200, 120, 0.95);
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 0.75rem;
+}
+
+.whip-prompt-btn:hover {
+  background: linear-gradient(135deg, rgba(220, 70, 0, 0.4), rgba(200, 50, 0, 0.3));
+  border-color: rgba(255, 120, 0, 0.6);
+  box-shadow: 0 0 20px rgba(255, 60, 0, 0.2);
+}
+
+.whip-prompt-key {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: rgba(255, 200, 120, 0.8);
+}
+
+.whip-prompt-dismiss {
+  font-size: 0.7rem;
+  color: rgba(140, 120, 100, 0.5);
+}
+
+/* ── Whip Game HUD ── */
+.whip-hud {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  pointer-events: auto;
+}
+
+.whip-hud-score {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  color: rgba(200, 160, 100, 0.7);
+  text-shadow: 0 0 10px rgba(255, 80, 0, 0.3);
+}
+
+.whip-hud-quit {
+  background: rgba(40, 20, 10, 0.6);
+  border: 1px solid rgba(120, 80, 40, 0.3);
+  color: rgba(180, 140, 100, 0.6);
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.whip-hud-quit:hover {
+  border-color: rgba(180, 120, 60, 0.5);
+  color: rgba(200, 160, 120, 0.8);
 }
 
 /* ── Balrog Caught Overlay ── */
@@ -1728,10 +1872,11 @@ a:hover { color: var(--silver-glow); }
 }
 
 .balrog-horns {
-  font-size: 4rem;
-  color: #1a0800;
+  font-size: 3.5rem;
+  color: #ff4400;
   text-shadow: 0 0 20px rgba(255, 40, 0, 0.9), 0 0 60px rgba(255, 0, 0, 0.5);
   line-height: 1;
+  letter-spacing: 2rem;
 }
 
 .balrog-eyes {
@@ -1739,7 +1884,7 @@ a:hover { color: var(--silver-glow); }
   color: #ff6600;
   text-shadow: 0 0 15px #ff3300, 0 0 40px #ff0000;
   letter-spacing: 1.5rem;
-  margin: -0.5rem 0;
+  margin: -0.3rem 0;
   animation: balrogEyeFlicker 0.15s ease-in-out infinite alternate;
 }
 
@@ -1748,12 +1893,35 @@ a:hover { color: var(--silver-glow); }
   100% { opacity: 1; text-shadow: 0 0 25px #ff6600, 0 0 60px #ff0000, 0 0 90px rgba(255, 0, 0, 0.4); }
 }
 
-.balrog-body {
-  font-size: 6rem;
-  color: #2a0a00;
-  text-shadow: 0 0 30px rgba(255, 50, 0, 0.7), 0 0 80px rgba(200, 0, 0, 0.4);
-  line-height: 1;
-  margin-top: -1rem;
+/* Balrog body — dark silhouette with fire cracks */
+.balrog-body-shape {
+  width: 100px;
+  height: 120px;
+  margin: -0.5rem auto 0;
+  background: radial-gradient(ellipse at 50% 30%, #1a0800 0%, #0a0200 60%, transparent 100%);
+  border-radius: 40% 40% 50% 50%;
+  position: relative;
+  box-shadow:
+    0 0 40px rgba(255, 40, 0, 0.3),
+    0 0 80px rgba(200, 0, 0, 0.15),
+    inset 0 -20px 40px rgba(255, 60, 0, 0.2);
+}
+
+.balrog-body-shape::before {
+  content: '';
+  position: absolute;
+  inset: 10%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255, 60, 0, 0.4) 0%, transparent 30%),
+    radial-gradient(circle at 70% 60%, rgba(255, 40, 0, 0.3) 0%, transparent 25%),
+    radial-gradient(circle at 50% 80%, rgba(255, 80, 0, 0.35) 0%, transparent 35%);
+  border-radius: inherit;
+  animation: bodyFirePulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes bodyFirePulse {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
 }
 
 .balrog-fire-glow {
@@ -1814,6 +1982,13 @@ a:hover { color: var(--silver-glow); }
   margin-top: 1rem;
 }
 
+.caught-score {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(0.8rem, 2.5vw, 1.2rem);
+  color: rgba(200, 160, 100, 0.7);
+  margin-top: 1rem;
+}
+
 /* ── Falling scene ── */
 .falling-scene {
   background: linear-gradient(to bottom, #0a0000 0%, #000 50%, #000 100%);
@@ -1830,11 +2005,6 @@ a:hover { color: var(--silver-glow); }
   font-size: clamp(3rem, 8vw, 5rem);
   z-index: 3;
   filter: brightness(0.6) drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
-}
-
-.falling-balrog {
-  position: absolute;
-  z-index: 2;
 }
 
 .falling-text {

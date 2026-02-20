@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 
 /* ── Timing constants ── */
-const INITIAL_IDLE_MS = 6000   // first whip after 6s idle
-const MIN_ATTACK_MS = 1800     // min gap between attacks once active
-const MAX_ATTACK_MS = 4500     // max gap
-const WHIP_DURATION = 550      // ms for whip to reach target
-const RETRACT_MS = 400         // ms for whip to retract
-const CATCH_RADIUS = 50        // px — how close cursor must be to get caught
-const CAUGHT_DURATION = 6500   // ms for the full Balrog caught sequence
-const COOLDOWN_AFTER_CATCH = 12000 // pause after caught animation
+const IDLE_BEFORE_PROMPT = 8000  // 8s idle before showing the prompt
+const FIRST_ATTACK_DELAY = 3000  // 3s after game starts before first whip
+const MIN_ATTACK_MS = 2500       // min gap between attacks
+const MAX_ATTACK_MS = 5000       // max gap
+const WHIP_DURATION = 750        // ms for whip to reach target (slower, more readable)
+const RETRACT_MS = 500           // ms for whip to retract
+const CATCH_RADIUS = 45          // px — how close cursor must be to get caught
+const CAUGHT_DURATION = 10000    // 10s for the full Balrog caught sequence (slower)
+const COOLDOWN_AFTER_CATCH = 8000
 
 /* ── Types ── */
 interface Spark {
@@ -18,75 +19,124 @@ interface Spark {
   life: number; maxLife: number; size: number; bright: boolean
 }
 
-type Phase = 'idle' | 'extending' | 'retracting' | 'caught' | 'cooldown'
+type GameState = 'off' | 'prompt' | 'playing' | 'caught' | 'cooldown'
 
 interface FallingRock {
   x: number; y: number; vy: number; size: number; rot: number; rotSpeed: number
 }
 
+type WhipPhase = 'idle' | 'extending' | 'retracting'
+
 /**
- * Balrog whip dodge game.
+ * Balrog whip dodge mini-game.
  *
- * After the mouse idles, a fiery S-curve whip cracks from the bottom-left
- * toward the cursor. The user can dodge by moving. If the whip tip lands
- * near the cursor → caught! Full-screen Balrog mine collapse animation.
- * Attacks repeat at random intervals.
+ * Shows a prompt after idle. Press Space to start. Dodge the fiery whip
+ * by moving your mouse. If caught → Balrog cinematic in the Mines of Moria.
  */
 export default function BalrogWhip() {
+  const [gameState, setGameState] = useState<GameState>('off')
+  const [dodges, setDodges] = useState(0)
+  const [score, setScore] = useState(0)
+
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const mouseRef = useRef({ x: -1, y: -1 })
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const rafRef = useRef<number>(0)
-  const phaseRef = useRef<Phase>('idle')
+  const whipPhaseRef = useRef<WhipPhase>('idle')
   const startTimeRef = useRef(0)
   const targetRef = useRef({ x: 0, y: 0 })
   const sparksRef = useRef<Spark[]>([])
-  const huntingRef = useRef(false)  // are we in attack-repeat mode?
   const caughtTimeRef = useRef(0)
   const rocksRef = useRef<FallingRock[]>([])
   const dodgeCountRef = useRef(0)
+  const gameStateRef = useRef<GameState>('off')
+  const scoreRef = useRef(0)
 
-  /* ── Schedule next attack ── */
+  // Keep ref in sync with state
+  useEffect(() => { gameStateRef.current = gameState }, [gameState])
+
+  /* ── Schedule next whip attack ── */
   const scheduleAttack = useCallback((delay?: number) => {
     if (timerRef.current) clearTimeout(timerRef.current)
-    const ms = delay ?? (MIN_ATTACK_MS + Math.random() * (MAX_ATTACK_MS - MIN_ATTACK_MS))
+    const speedUp = Math.max(0.5, 1 - dodgeCountRef.current * 0.06)
+    const ms = delay ?? (MIN_ATTACK_MS + Math.random() * (MAX_ATTACK_MS - MIN_ATTACK_MS)) * speedUp
     timerRef.current = setTimeout(() => {
+      if (gameStateRef.current !== 'playing') return
       if (mouseRef.current.x < 0) { scheduleAttack(1000); return }
-      if (phaseRef.current !== 'idle' && phaseRef.current !== 'cooldown') return
-      phaseRef.current = 'extending'
+      if (whipPhaseRef.current !== 'idle') return
+      whipPhaseRef.current = 'extending'
       startTimeRef.current = performance.now()
       targetRef.current = { ...mouseRef.current }
       sparksRef.current = []
-      huntingRef.current = true
       draw()
     }, ms)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /* ── Mouse move: reset idle or dodge detection ── */
-  const handleMove = useCallback((x: number, y: number) => {
-    mouseRef.current = { x, y }
-    // If idle and not hunting yet, restart idle timer
-    if (!huntingRef.current && phaseRef.current === 'idle') {
-      scheduleAttack(INITIAL_IDLE_MS)
-    }
+  /* ── Start game ── */
+  const startGame = useCallback(() => {
+    setGameState('playing')
+    setDodges(0)
+    setScore(0)
+    dodgeCountRef.current = 0
+    scoreRef.current = 0
+    whipPhaseRef.current = 'idle'
+    sparksRef.current = []
+    scheduleAttack(FIRST_ATTACK_DELAY)
   }, [scheduleAttack])
 
-  /* ── Caught sequence ── */
+  /* ── End game (caught) ── */
   function triggerCaught() {
-    phaseRef.current = 'caught'
+    setGameState('caught')
     caughtTimeRef.current = performance.now()
     rocksRef.current = []
-    dodgeCountRef.current = 0
+    const finalScore = scoreRef.current
+    setScore(finalScore)
 
-    // Show overlay
     const ol = overlayRef.current
     if (ol) {
       ol.style.display = 'flex'
       ol.style.opacity = '0'
     }
   }
+
+  /* ── Stop game ── */
+  const stopGame = useCallback(() => {
+    setGameState('off')
+    whipPhaseRef.current = 'idle'
+    if (timerRef.current) clearTimeout(timerRef.current)
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    sparksRef.current = []
+    const canvas = canvasRef.current
+    if (canvas) {
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+    }
+    // Restart idle detection
+    resetIdleDetection()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /* ── Idle detection for showing prompt ── */
+  const resetIdleDetection = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    if (gameStateRef.current !== 'off') return
+    idleTimerRef.current = setTimeout(() => {
+      if (gameStateRef.current === 'off' && mouseRef.current.x > 0) {
+        setGameState('prompt')
+      }
+    }, IDLE_BEFORE_PROMPT)
+  }, [])
+
+  /* ── Mouse tracking ── */
+  const handleMove = useCallback((x: number, y: number) => {
+    mouseRef.current = { x, y }
+    if (gameStateRef.current === 'off') {
+      resetIdleDetection()
+    }
+  }, [resetIdleDetection])
 
   /* ── Main draw loop ── */
   function draw() {
@@ -102,87 +152,89 @@ export default function BalrogWhip() {
 
     ctx.clearRect(0, 0, W, H)
 
-    if (phaseRef.current === 'caught') {
+    // Draw dodge score during gameplay
+    if (gameStateRef.current === 'playing' || gameStateRef.current === 'caught') {
+      ctx.save()
+      ctx.font = '13px Cinzel, serif'
+      ctx.fillStyle = 'rgba(200, 160, 100, 0.5)'
+      ctx.textAlign = 'right'
+      ctx.fillText(`Dodges: ${dodgeCountRef.current}`, W - 20, 30)
+      ctx.restore()
+    }
+
+    if (gameStateRef.current === 'caught') {
       drawCaughtSequence(ctx, W, H, now)
       rafRef.current = requestAnimationFrame(draw)
       return
     }
 
-    if (phaseRef.current === 'idle' || phaseRef.current === 'cooldown') return
+    if (gameStateRef.current !== 'playing') return
+    if (whipPhaseRef.current === 'idle') return
 
     const mx = targetRef.current.x
     const my = targetRef.current.y
 
-    // Origin: bottom-left
     const ox = -30
     const oy = H + 30
 
     let t = 0
 
-    if (phaseRef.current === 'extending') {
+    if (whipPhaseRef.current === 'extending') {
       t = Math.min(elapsed / WHIP_DURATION, 1)
       if (t >= 1) {
-        // Check if caught
         const curX = mouseRef.current.x
         const curY = mouseRef.current.y
         const dist = Math.sqrt((curX - mx) ** 2 + (curY - my) ** 2)
         if (dist < CATCH_RADIUS) {
-          // CAUGHT!
           spawnImpactSparks(mx, my, 40)
           triggerCaught()
           rafRef.current = requestAnimationFrame(draw)
           return
         }
         // Missed — retract
-        phaseRef.current = 'retracting'
+        whipPhaseRef.current = 'retracting'
         startTimeRef.current = now
         dodgeCountRef.current++
+        scoreRef.current = dodgeCountRef.current
+        setDodges(dodgeCountRef.current)
+        setScore(dodgeCountRef.current)
       }
-    } else if (phaseRef.current === 'retracting') {
+    } else if (whipPhaseRef.current === 'retracting') {
       t = 1 - Math.min(elapsed / RETRACT_MS, 1)
       if (t <= 0) {
-        phaseRef.current = 'idle'
+        whipPhaseRef.current = 'idle'
         ctx.clearRect(0, 0, W, H)
-        // Schedule next attack (faster as dodges increase)
-        const speedUp = Math.max(0.4, 1 - dodgeCountRef.current * 0.08)
-        scheduleAttack(
-          (MIN_ATTACK_MS + Math.random() * (MAX_ATTACK_MS - MIN_ATTACK_MS)) * speedUp
-        )
+        scheduleAttack()
         return
       }
     }
 
     // ── S-curve whip shape ──
-    // The whip unfurls as a traveling S-wave along its length
     const dx = mx - ox
     const dy = my - oy
     const len = Math.sqrt(dx * dx + dy * dy) || 1
     const perpX = -dy / len
     const perpY = dx / len
 
-    // Draw the whip as a polyline of many segments with S-wave displacement
     const SEG = 60
     const points: { x: number; y: number }[] = []
 
     for (let i = 0; i <= SEG; i++) {
-      const s = i / SEG // 0→1 along whip
-      // How much of the whip is "arrived" at this point
+      const s = i / SEG
       const arrival = Math.min(t * 1.3 - s * 0.3, 1)
       if (arrival <= 0) break
 
       const easedS = easeOutQuart(Math.min(arrival, 1))
 
-      // Base position along straight line
       let px = ox + dx * s * easedS
       let py = oy + dy * s * easedS
 
-      // S-wave: traveling sinusoidal displacement
-      // Wave propagates from origin to tip, amplitude peaks in middle, zero at ends
-      const waveProgress = Math.max(0, t * 2.5 - s * 1.5) // wave front travels
-      const envelope = Math.sin(s * Math.PI) // zero at ends, max in middle
-      const dampening = Math.max(0, 1 - t * 1.2) // wave calms as whip straightens
-      const waveAmp = envelope * dampening * 90 * Math.min(waveProgress, 1)
-      const waveFreq = s * Math.PI * 3 - t * 12 // traveling wave
+      // S-wave traveling displacement
+      const waveProgress = Math.max(0, t * 2.5 - s * 1.5)
+      const envelope = Math.sin(s * Math.PI)
+      const dampening = Math.max(0, 1 - t * 1.2)
+      const waveAmp = envelope * dampening * 100 * Math.min(waveProgress, 1)
+      const waveFreq = s * Math.PI * 3 - t * 10
       const displacement = Math.sin(waveFreq) * waveAmp
 
       px += perpX * displacement
@@ -196,7 +248,7 @@ export default function BalrogWhip() {
       return
     }
 
-    // Tip curl — the last few segments curl into a hook
+    // Tip curl
     if (t > 0.7 && points.length > 5) {
       const curlAmount = Math.min((t - 0.7) / 0.3, 1)
       const curlSegs = Math.min(8, points.length - 1)
@@ -210,7 +262,6 @@ export default function BalrogWhip() {
       }
     }
 
-    // Flicker
     const flicker = 0.75 + 0.25 * Math.sin(now * 0.025) * Math.cos(now * 0.017)
     const rage = 0.8 + 0.2 * Math.sin(now * 0.04)
 
@@ -234,7 +285,6 @@ export default function BalrogWhip() {
       if (layer.blur > 0) ctx.filter = `blur(${layer.blur}px)`
       ctx.beginPath()
       ctx.moveTo(points[0].x, points[0].y)
-      // Smooth curve through points
       for (let i = 1; i < points.length - 1; i++) {
         const xc = (points[i].x + points[i + 1].x) / 2
         const yc = (points[i].y + points[i + 1].y) / 2
@@ -246,7 +296,7 @@ export default function BalrogWhip() {
       ctx.restore()
     }
 
-    // Secondary tendril (thinner, offset)
+    // Secondary tendril
     if (points.length > 4) {
       const tendrilLayers = [
         { width: 10, color: 'rgba(200, 25, 0, 0.06)', blur: 14 },
@@ -315,28 +365,27 @@ export default function BalrogWhip() {
       })
     }
 
-    // Update & draw sparks
     drawSparks(ctx)
 
     rafRef.current = requestAnimationFrame(draw)
   }
 
-  /* ── Caught animation: Balrog in the mines, falling ── */
+  /* ── Caught animation ── */
   function drawCaughtSequence(ctx: CanvasRenderingContext2D, W: number, H: number, now: number) {
     const elapsed = now - caughtTimeRef.current
-    const t = elapsed / CAUGHT_DURATION // 0→1 overall
+    const t = elapsed / CAUGHT_DURATION
 
     const ol = overlayRef.current
 
-    // Phase breakdown:
-    // 0.00-0.08: Flash + shake
-    // 0.08-0.35: Balrog rises, fire everywhere
-    // 0.35-0.50: "YOU SHALL NOT PASS" text
-    // 0.50-0.85: Bridge breaks, falling
-    // 0.85-1.00: Fade to black, then recover
+    // Phase breakdown (slower, more cinematic):
+    // 0.00–0.06: Flash
+    // 0.06–0.30: Balrog rises
+    // 0.30–0.50: "YOU SHALL NOT PASS"
+    // 0.50–0.82: Falling
+    // 0.82–1.00: Fade out + score
 
     // Screen shake
-    const shakeIntensity = t < 0.5 ? 15 * (1 - t * 2) : t < 0.85 ? 8 * Math.sin(now * 0.05) : 0
+    const shakeIntensity = t < 0.4 ? 12 * (1 - t * 2.5) : t < 0.82 ? 6 * Math.sin(now * 0.04) : 0
     if (shakeIntensity > 0) {
       document.body.style.transform = `translate(${(Math.random() - 0.5) * shakeIntensity}px, ${(Math.random() - 0.5) * shakeIntensity}px)`
     } else {
@@ -344,50 +393,49 @@ export default function BalrogWhip() {
     }
 
     // Flash
-    if (t < 0.08) {
-      const flashAlpha = 1 - t / 0.08
+    if (t < 0.06) {
+      const flashAlpha = 1 - t / 0.06
       ctx.save()
       ctx.fillStyle = `rgba(255, 120, 0, ${flashAlpha * 0.6})`
       ctx.fillRect(0, 0, W, H)
       ctx.restore()
     }
 
-    // Canvas fire particles during entire sequence
-    if (t < 0.85) {
-      // Spawn fire from bottom
-      for (let i = 0; i < 3; i++) {
+    // Fire particles
+    if (t < 0.82) {
+      for (let i = 0; i < 2; i++) {
         sparksRef.current.push({
           x: Math.random() * W,
           y: H + 10,
           vx: (Math.random() - 0.5) * 3,
-          vy: -3 - Math.random() * 8,
+          vy: -3 - Math.random() * 6,
           life: 1,
-          maxLife: 40 + Math.random() * 40,
+          maxLife: 50 + Math.random() * 50,
           size: 3 + Math.random() * 5,
           bright: Math.random() < 0.4,
         })
       }
     }
 
-    // Falling rocks during bridge-break phase
-    if (t > 0.45 && t < 0.85) {
-      if (Math.random() < 0.3) {
+    // Falling rocks
+    if (t > 0.45 && t < 0.82) {
+      if (Math.random() < 0.25) {
         rocksRef.current.push({
           x: Math.random() * W,
           y: -20,
-          vy: 2 + Math.random() * 4,
+          vy: 1.5 + Math.random() * 3,
           size: 5 + Math.random() * 20,
           rot: Math.random() * Math.PI * 2,
-          rotSpeed: (Math.random() - 0.5) * 0.1,
+          rotSpeed: (Math.random() - 0.5) * 0.08,
         })
       }
     }
 
-    // Draw falling rocks
+    // Draw rocks
     for (let i = rocksRef.current.length - 1; i >= 0; i--) {
       const r = rocksRef.current[i]
       r.y += r.vy
-      r.vy += 0.15
+      r.vy += 0.12
       r.rot += r.rotSpeed
       if (r.y > H + 50) { rocksRef.current.splice(i, 1); continue }
 
@@ -398,7 +446,6 @@ export default function BalrogWhip() {
       ctx.strokeStyle = 'rgba(80, 50, 20, 0.4)'
       ctx.lineWidth = 1
       ctx.beginPath()
-      // Irregular rock shape
       const sides = 5 + Math.floor(Math.random() * 3)
       for (let s = 0; s < sides; s++) {
         const a = (s / sides) * Math.PI * 2
@@ -416,45 +463,39 @@ export default function BalrogWhip() {
 
     // Overlay content
     if (ol) {
-      if (t < 0.04) {
-        ol.style.opacity = String(t / 0.04)
-      } else if (t < 0.85) {
+      if (t < 0.03) {
+        ol.style.opacity = String(t / 0.03)
+      } else if (t < 0.82) {
         ol.style.opacity = '1'
       } else {
-        ol.style.opacity = String(Math.max(0, 1 - (t - 0.85) / 0.15))
+        ol.style.opacity = String(Math.max(0, 1 - (t - 0.82) / 0.18))
       }
 
-      // Update overlay inner content based on phase
-      if (t < 0.35) {
-        ol.innerHTML = createBalrogRising(t / 0.35)
-      } else if (t < 0.55) {
-        ol.innerHTML = createYouShallNotPass((t - 0.35) / 0.2)
-      } else if (t < 0.85) {
-        ol.innerHTML = createFalling((t - 0.55) / 0.3)
+      if (t < 0.30) {
+        ol.innerHTML = createBalrogRising(t / 0.30)
+      } else if (t < 0.50) {
+        ol.innerHTML = createYouShallNotPass((t - 0.30) / 0.20)
+      } else if (t < 0.82) {
+        ol.innerHTML = createFalling((t - 0.50) / 0.32)
       } else {
-        ol.innerHTML = createFadeOut((t - 0.85) / 0.15)
+        ol.innerHTML = createFadeOut((t - 0.82) / 0.18, scoreRef.current)
       }
     }
 
-    // End of sequence
+    // End
     if (t >= 1) {
       document.body.style.transform = ''
-      if (ol) {
-        ol.style.display = 'none'
-        ol.innerHTML = ''
-      }
+      if (ol) { ol.style.display = 'none'; ol.innerHTML = '' }
       ctx.clearRect(0, 0, W, H)
       sparksRef.current = []
       rocksRef.current = []
-      phaseRef.current = 'cooldown'
-      // Resume attacks after cooldown
+      setGameState('cooldown')
       setTimeout(() => {
-        phaseRef.current = 'idle'
-        huntingRef.current = false
+        setGameState('off')
         dodgeCountRef.current = 0
-        scheduleAttack(INITIAL_IDLE_MS)
+        whipPhaseRef.current = 'idle'
+        resetIdleDetection()
       }, COOLDOWN_AFTER_CATCH)
-      return
     }
   }
 
@@ -516,48 +557,118 @@ export default function BalrogWhip() {
       if (t) handleMove(t.clientX, t.clientY)
     }
 
+    function onKeyDown(e: KeyboardEvent) {
+      // Don't capture space when user is typing in an input
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      if (e.code === 'Space') {
+        e.preventDefault()
+        if (gameStateRef.current === 'prompt') {
+          startGame()
+        }
+      }
+      if (e.code === 'Escape') {
+        if (gameStateRef.current === 'playing') {
+          stopGame()
+        } else if (gameStateRef.current === 'prompt') {
+          setGameState('off')
+          resetIdleDetection()
+        }
+      }
+    }
+
     resize()
     window.addEventListener('resize', resize, { passive: true })
     window.addEventListener('mousemove', onMouseMove, { passive: true })
     window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('keydown', onKeyDown)
 
-    scheduleAttack(INITIAL_IDLE_MS)
+    // Start idle detection
+    resetIdleDetection()
 
     return () => {
       window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('keydown', onKeyDown)
       if (timerRef.current) clearTimeout(timerRef.current)
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       document.body.style.transform = ''
     }
-  }, [handleMove, scheduleAttack])
+  }, [handleMove, startGame, stopGame, resetIdleDetection])
 
   return (
     <>
       <canvas ref={canvasRef} className="balrog-whip-canvas" aria-hidden="true" />
       <div ref={overlayRef} className="balrog-caught-overlay" aria-hidden="true" />
+
+      {/* Prompt overlay */}
+      {gameState === 'prompt' && (
+        <div className="whip-prompt-overlay" onClick={() => setGameState('off')}>
+          <div className="whip-prompt-card" onClick={e => e.stopPropagation()}>
+            <div className="whip-prompt-icon">🔥</div>
+            <h2 className="whip-prompt-title">The Balrog Stirs…</h2>
+            <p className="whip-prompt-desc">
+              A shadow and a flame. The Balrog&apos;s whip lashes from the depths
+              of Khazad-d&ucirc;m. Dodge its fiery strikes by moving your cursor.
+            </p>
+            <div className="whip-prompt-rules">
+              <div className="whip-prompt-rule">
+                <span className="whip-prompt-rule-icon">🖱️</span>
+                <span>Move your mouse to dodge the whip</span>
+              </div>
+              <div className="whip-prompt-rule">
+                <span className="whip-prompt-rule-icon">🔥</span>
+                <span>The whip gets faster with each dodge</span>
+              </div>
+              <div className="whip-prompt-rule">
+                <span className="whip-prompt-rule-icon">💀</span>
+                <span>If it catches you… you fall into shadow</span>
+              </div>
+            </div>
+            <button className="whip-prompt-btn" onClick={startGame}>
+              <span className="whip-prompt-key">Space</span> to face the Balrog
+            </button>
+            <p className="whip-prompt-dismiss">
+              Press <strong>Esc</strong> to dismiss
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Playing HUD */}
+      {gameState === 'playing' && (
+        <div className="whip-hud">
+          <span className="whip-hud-score">Dodges: {dodges}</span>
+          <button className="whip-hud-quit" onClick={stopGame}>
+            Esc to quit
+          </button>
+        </div>
+      )}
     </>
   )
 }
 
 /* ══════════════════════════════════════════════════════
-   Overlay HTML generators for caught sequence phases
+   Overlay HTML generators for caught sequence
    ══════════════════════════════════════════════════════ */
 
 function createBalrogRising(t: number): string {
-  const scale = 0.6 + t * 0.8
-  const glowOpacity = t * 0.8
+  const scale = 0.5 + t * 0.9
+  const glowOpacity = t * 0.7
   return `
     <div class="balrog-scene">
-      <div class="balrog-creature" style="transform: scale(${scale}) translateY(${(1 - t) * 40}%); opacity: ${Math.min(t * 2, 1)}">
-        <div class="balrog-horns">⛧</div>
-        <div class="balrog-eyes">◉ ◉</div>
-        <div class="balrog-body">𖤐</div>
+      <div class="balrog-creature" style="transform: scale(${scale}) translateY(${(1 - t) * 50}%); opacity: ${Math.min(t * 1.8, 1)}">
+        <div class="balrog-horns">&#x2726; &#x2726;</div>
+        <div class="balrog-eyes">&#x25C9; &#x25C9;</div>
+        <div class="balrog-body-shape"></div>
       </div>
       <div class="balrog-fire-glow" style="opacity: ${glowOpacity}"></div>
-      <div class="mine-text" style="opacity: ${Math.max(0, t - 0.5) * 2}">
-        <em>A Balrog of Morgoth…</em>
+      <div class="mine-text" style="opacity: ${Math.max(0, t - 0.4) * 1.7}">
+        <em>A Balrog of Morgoth…</em><br>
+        <em style="font-size: 0.8em; opacity: 0.7">What did you say?</em>
       </div>
     </div>
   `
@@ -565,53 +676,52 @@ function createBalrogRising(t: number): string {
 
 function createYouShallNotPass(t: number): string {
   const scale = 0.8 + t * 0.4
-  const shake = t < 0.5 ? `translateX(${Math.sin(t * 60) * 4}px)` : ''
+  const shake = t < 0.5 ? `translateX(${Math.sin(t * 50) * 3}px)` : ''
   return `
     <div class="balrog-scene">
-      <div class="balrog-creature" style="transform: scale(1.2); opacity: 0.7">
-        <div class="balrog-horns">⛧</div>
-        <div class="balrog-eyes" style="color: #ff3300">◉ ◉</div>
-        <div class="balrog-body">𖤐</div>
+      <div class="balrog-creature" style="transform: scale(1.3); opacity: 0.6">
+        <div class="balrog-horns">&#x2726; &#x2726;</div>
+        <div class="balrog-eyes" style="color: #ff3300">&#x25C9; &#x25C9;</div>
+        <div class="balrog-body-shape"></div>
       </div>
       <div class="balrog-fire-glow" style="opacity: 0.9"></div>
-      <div class="ysnp-text" style="transform: scale(${scale}) ${shake}; opacity: ${Math.min(t * 3, 1)}">
+      <div class="ysnp-text" style="transform: scale(${scale}) ${shake}; opacity: ${Math.min(t * 2.5, 1)}">
         YOU SHALL NOT PASS
       </div>
-      <div class="gandalf-silhouette-scene" style="opacity: ${Math.min(t * 2, 1)}">🧙</div>
+      <div class="gandalf-silhouette-scene" style="opacity: ${Math.min(t * 2, 1)}">&#x1F9D9;</div>
     </div>
   `
 }
 
 function createFalling(t: number): string {
-  const fallY = t * 300
-  const spin = t * 720
-  const fadeText = Math.max(0, 1 - t * 1.5)
+  const fallY = t * 250
+  const spin = t * 540
+  const fadeText = Math.max(0, 1 - t * 1.2)
   return `
     <div class="balrog-scene falling-scene">
-      <div class="falling-darkness" style="opacity: ${0.3 + t * 0.7}"></div>
-      <div class="falling-figure" style="transform: translateY(${fallY}px) rotate(${spin}deg); opacity: ${1 - t}">
-        🧙
+      <div class="falling-darkness" style="opacity: ${0.2 + t * 0.8}"></div>
+      <div class="falling-figure" style="transform: translateY(${fallY}px) rotate(${spin}deg); opacity: ${1 - t * 0.9}">
+        &#x1F9D9;
       </div>
-      <div class="falling-balrog" style="transform: translateY(${fallY * 0.6}px); opacity: ${1 - t * 0.8}">
-        <span style="font-size: 4rem; filter: hue-rotate(-10deg) brightness(1.5)">𖤐</span>
+      <div class="falling-text" style="opacity: ${fadeText}; transform: translateY(${t * 40}px)">
+        <div class="bridge-quote">&ldquo;Fly, you fools!&rdquo;</div>
+        <div class="bridge-sub">&mdash; Gandalf, Bridge of Khazad-d&ucirc;m</div>
       </div>
-      <div class="falling-text" style="opacity: ${fadeText}; transform: translateY(${t * 50}px)">
-        <div class="bridge-quote">"Fly, you fools!"</div>
-        <div class="bridge-sub">— Gandalf, Bridge of Khazad-dûm</div>
-      </div>
-      <div class="depth-lines" style="opacity: ${t * 0.6}">
+      <div class="depth-lines" style="opacity: ${t * 0.5}">
         ${'<div class="depth-line"></div>'.repeat(8)}
       </div>
     </div>
   `
 }
 
-function createFadeOut(t: number): string {
+function createFadeOut(t: number, score: number): string {
+  const textFade = t < 0.5 ? t * 2 : Math.max(0, 1 - (t - 0.7) / 0.3)
   return `
     <div class="balrog-scene">
       <div class="falling-darkness" style="opacity: 1"></div>
-      <div class="aftermath-text" style="opacity: ${Math.min(t * 4, 1 - Math.max(0, (t - 0.7) / 0.3))}">
-        <div class="mine-text"><em>…and the bridge broke beneath them.</em></div>
+      <div class="aftermath-text" style="opacity: ${textFade}">
+        <div class="mine-text"><em>&hellip;and the bridge broke beneath them.</em></div>
+        ${score > 0 ? `<div class="caught-score">You dodged ${score} time${score === 1 ? '' : 's'} before falling.</div>` : ''}
       </div>
     </div>
   `
