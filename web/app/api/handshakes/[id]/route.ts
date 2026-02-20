@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireApiAuth } from '@/lib/api-auth'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createAdminClient, createAnonClient } from '@/lib/supabase/admin'
 import { handshakeToApiJson } from '@/lib/api-mappers'
 
 type Params = { params: Promise<{ id: string }> }
@@ -46,7 +46,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params
     const body = await request.json()
-    const supabase = createAdminClient()
+    // Use anon client so the write triggers Realtime events for
+    // subscribers using the anon key (the browser receive page).
+    const supabase = createAnonClient()
 
     // Build the update object, auto-setting status transitions
     const update: Record<string, unknown> = {}
