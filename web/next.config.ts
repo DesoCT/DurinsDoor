@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob:",
-              `connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.co"} https://eu.i.posthog.com https://eu-assets.i.posthog.com`,
+              `connect-src 'self' ${process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.co"} ${(process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.co").replace("https://", "wss://")} https://eu.i.posthog.com https://eu-assets.i.posthog.com`,
               "frame-ancestors 'none'",
             ].join("; "),
           },
