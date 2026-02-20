@@ -153,9 +153,9 @@ export default function GuidePage() {
               use one of the incantations below.
             </p>
 
-            <div style={{ background: 'var(--bg-stone)', border: '1px solid var(--border-rune)', borderRadius: '6px', padding: '1.2rem 1.5rem', margin: '1.2rem 0', position: 'relative', overflowX: 'auto' }}>
-              <div style={{ position: 'absolute', top: '-0.5rem', left: '1rem', background: 'var(--bg-stone)', padding: '0 0.5rem', fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: 'Cinzel, serif', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Terminal · Install</div>
-              <code style={{ fontFamily: 'Courier New, monospace', fontSize: '0.85rem', color: 'var(--elvish)', display: 'block', whiteSpace: 'pre' }}>{
+            <div className="guide-code-block">
+              <div className="guide-code-label">Terminal · Install</div>
+              <code className="guide-code">{
 `# Linux (x86_64)
 curl -fSL https://github.com/DesoCT/DurinsDoor/releases/latest/download/durins-door-linux-amd64 -o durins-door
 chmod +x durins-door && sudo mv durins-door /usr/local/bin/
@@ -224,9 +224,9 @@ go install github.com/unisoniq/durins-door@latest`
               </tbody>
             </table>
 
-            <div style={{ background: 'var(--bg-stone)', border: '1px solid var(--border-rune)', borderRadius: '6px', padding: '1.2rem 1.5rem', margin: '1.2rem 0', position: 'relative', overflowX: 'auto' }}>
-              <div style={{ position: 'absolute', top: '-0.5rem', left: '1rem', background: 'var(--bg-stone)', padding: '0 0.5rem', fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: 'Cinzel, serif', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Terminal · Server Examples</div>
-              <code style={{ fontFamily: 'Courier New, monospace', fontSize: '0.85rem', color: 'var(--elvish)', display: 'block', whiteSpace: 'pre' }}>{
+            <div className="guide-code-block">
+              <div className="guide-code-label">Terminal · Server Examples</div>
+              <code className="guide-code">{
 `# Start the server
 durins-door server --port 8888
 
@@ -316,7 +316,7 @@ durins-door --version`
             <table className="rune-table">
               <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
               <tbody>
-                <tr><td className="flag-cell">--server-url</td><td className="default-cell">http://localhost:8888</td><td className="desc-cell">Durin&apos;s Door server URL</td></tr>
+                <tr><td className="flag-cell">--server-url</td><td className="default-cell">https://durinsdoor.io</td><td className="desc-cell">Durin&apos;s Door server URL</td></tr>
                 <tr><td className="flag-cell">--api-token</td><td className="default-cell">(none)</td><td className="desc-cell">Admin bearer token (also via DURINS_DOOR_TOKEN env var)</td></tr>
                 <tr><td className="flag-cell">--version</td><td className="default-cell"></td><td className="desc-cell">Print version and build date</td></tr>
               </tbody>
@@ -325,72 +325,39 @@ durins-door --version`
 
           <div className="ms-rune-divider">· · · ᛞ · · ·</div>
 
-          {/* Chapter VIII — Cloud CLI */}
+          {/* Chapter VIII — Using CLI with the Web */}
           <section className="ms-section">
-            <h2 className="ms-heading"><span className="ms-heading-rune">ᛞ</span> Cloud CLI Reference</h2>
+            <h2 className="ms-heading"><span className="ms-heading-rune">ᛞ</span> Using the CLI with durinsdoor.io</h2>
             <p className="ms-body">
-              The cloud CLI (<em>durins-door-cli</em>) encrypts locally and uploads ciphertext to Supabase Storage.
-              Zero-knowledge — the server never sees your key or plaintext. Fully interoperable with this web app.
+              The CLI talks directly to <strong>durinsdoor.io</strong> by default — no self-hosted server needed.
+              Encrypt locally, upload ciphertext to the cloud. Zero-knowledge — the server never sees your key or plaintext.
             </p>
 
-            <div style={{ background: 'var(--bg-stone)', border: '1px solid var(--border-rune)', borderRadius: '6px', padding: '1.2rem 1.5rem', margin: '1.2rem 0', position: 'relative', overflowX: 'auto' }}>
-              <div style={{ position: 'absolute', top: '-0.5rem', left: '1rem', background: 'var(--bg-stone)', padding: '0 0.5rem', fontSize: '0.65rem', color: 'var(--text-dim)', fontFamily: 'Cinzel, serif', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Terminal · Cloud CLI</div>
-              <code style={{ fontFamily: 'Courier New, monospace', fontSize: '0.85rem', color: 'var(--elvish)', display: 'block', whiteSpace: 'pre' }}>{
-`# Authenticate (optional — enables list/revoke)
-durins-door-cli login
+            <div className="guide-code-block">
+              <div className="guide-code-label">Terminal · Quick Start</div>
+              <code className="guide-code">{
+`# Send a file to someone (they open Handshake > Receive in the browser)
+durins-door send file.pdf --to HXMP3K
 
-# Share a file — returns a link with the key in the #fragment
-durins-door-cli share secret.pdf
-durins-door-cli share secret.pdf --expires 24h --max-downloads 5
-durins-door-cli share secret.pdf --password "mellon"
+# Receive a file (displays a pairing code)
+durins-door receive
 
-# Download and decrypt a shared file
-durins-door-cli download "https://durins-door.vercel.app/share/abc123#keyhere"
-durins-door-cli download "https://durins-door.vercel.app/share/abc123#keyhere" -o myfile.pdf
+# Upload a file and get a share link
+durins-door upload secret.pdf --expires 24h
 
-# List your shares (requires login)
-durins-door-cli list
+# List active shares
+durins-door list
 
-# Revoke a share (requires login)
-durins-door-cli revoke abc123def456
-durins-door-cli revoke abc123def456 --force
-
-# Peer-to-peer handshake — no shared URL needed
-durins-door-cli receive                                    # Displays a pairing code
-durins-door-cli receive -o ~/Downloads                     # Save to specific dir
-durins-door-cli send file.pdf --to ARKENSTONE              # On the sender's machine
-durins-door-cli send file.pdf --to ARKENSTONE --password "extra-secret"
-
-# Log out
-durins-door-cli logout`
+# Revoke a share
+durins-door revoke <share-id>`
               }</code>
             </div>
 
-            <p style={{ fontFamily: 'Cinzel, serif', fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '1.8rem 0 0.5rem' }}>
-              durins-door-cli share [flags] &lt;file&gt;
+            <p className="ms-body" style={{ marginTop: '1rem' }}>
+              The CLI connects to <code style={{ fontFamily: 'monospace', color: 'var(--elvish)', fontSize: '0.85em' }}>https://durinsdoor.io</code> by default.
+              Override with <code style={{ fontFamily: 'monospace', color: 'var(--elvish)', fontSize: '0.85em' }}>--server-url</code> to
+              point at a self-hosted server or local dev instance.
             </p>
-            <table className="rune-table">
-              <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
-              <tbody>
-                <tr><td className="flag-cell">--password</td><td className="default-cell">(none)</td><td className="desc-cell">Password-protect the share</td></tr>
-                <tr><td className="flag-cell">--expires</td><td className="default-cell">(never)</td><td className="desc-cell">Expiry duration (24h, 7d, 30d)</td></tr>
-                <tr><td className="flag-cell">--max-downloads</td><td className="default-cell">0 (unlimited)</td><td className="desc-cell">Max download count</td></tr>
-                <tr><td className="flag-cell">--url</td><td className="default-cell">durins-door.vercel.app</td><td className="desc-cell">Base URL for the share link</td></tr>
-              </tbody>
-            </table>
-
-            <p style={{ fontFamily: 'Cinzel, serif', fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '1.8rem 0 0.5rem' }}>
-              durins-door-cli send &lt;file&gt; --to &lt;CODE&gt;
-            </p>
-            <table className="rune-table">
-              <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
-              <tbody>
-                <tr><td className="flag-cell">--to</td><td className="default-cell">(required)</td><td className="desc-cell">Pairing code from the receiver</td></tr>
-                <tr><td className="flag-cell">--password</td><td className="default-cell">(none)</td><td className="desc-cell">Additional password layer on top of ECDH</td></tr>
-                <tr><td className="flag-cell">--expires</td><td className="default-cell">(never)</td><td className="desc-cell">Share expiry (24h, 7d)</td></tr>
-                <tr><td className="flag-cell">--max-downloads</td><td className="default-cell">0 (unlimited)</td><td className="desc-cell">Max download count</td></tr>
-              </tbody>
-            </table>
           </section>
 
           <div className="ms-border-bot" />

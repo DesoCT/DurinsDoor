@@ -1561,6 +1561,38 @@ body {
 .rune-table .default-cell { font-family: 'Courier New', monospace; color: #a0e090; font-size: 0.78rem; }
 .rune-table .desc-cell { font-style: italic; color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; }
 
+/* ── Guide code blocks ───────────────────────────── */
+.guide-code-block {
+  background: var(--bg-stone);
+  border: 1px solid var(--border-rune);
+  border-radius: 6px;
+  padding: 1.2rem 1.5rem;
+  margin: 1.2rem 0;
+  position: relative;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.guide-code-label {
+  position: absolute;
+  top: -0.5rem;
+  left: 1rem;
+  background: var(--bg-stone);
+  padding: 0 0.5rem;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.guide-code {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: var(--elvish);
+  display: block;
+  white-space: pre;
+  word-break: keep-all;
+}
+
 /* ── Error states ─────────────────────────────────── */
 .error-card { text-align: center; padding: 2rem; }
 .error-glyph { font-size: 4rem; display: block; margin-bottom: 1rem; }
@@ -1609,6 +1641,17 @@ a:hover { color: var(--silver-glow); }
 
   .door-container { width: min(280px, 80vw, 50vh); }
   .site-title { font-size: clamp(1.2rem, 5vw, 1.6rem); }
+
+  /* Guide: make code blocks readable on mobile */
+  .guide-code-block { padding: 1rem 0.8rem; }
+  .guide-code { font-size: 0.7rem; }
+
+  /* Guide: make tables responsive */
+  .rune-table { font-size: 0.75rem; }
+  .rune-table th, .rune-table td { padding: 0.4rem 0.5rem; }
+  .rune-table .flag-cell { font-size: 0.68rem; white-space: normal; word-break: break-all; }
+  .rune-table .default-cell { font-size: 0.68rem; white-space: normal; word-break: break-all; }
+  .rune-table .desc-cell { font-size: 0.75rem; }
 }
 
 /* Mobile nav fallback — visible only when pillars hidden */
