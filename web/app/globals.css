@@ -1686,3 +1686,14 @@ a:hover { color: var(--silver-glow); }
   color: var(--silver-glow);
   border-color: var(--border-rune);
 }
+
+/* ── Balrog Whip idle animation ── */
+.balrog-whip-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9998;
+}
