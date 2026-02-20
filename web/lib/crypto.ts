@@ -41,8 +41,9 @@ export async function encryptFileWithKey(buffer: ArrayBuffer, key: CryptoKey): P
 
 /** Decrypt a blob using the base64url key from the URL fragment. */
 export async function decryptFile(cipherBlob: ArrayBuffer, keyB64: string): Promise<ArrayBuffer> {
-  // Restore base64url padding
-  const padded = keyB64.replace(/-/g, '+').replace(/_/g, '/') + '=='.slice((keyB64.length + 1) % 4 % 3)
+  // Restore base64url → standard base64 with correct padding
+  const std = keyB64.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = std + '='.repeat((4 - (std.length % 4)) % 4)
   const keyBytes = Uint8Array.from(atob(padded), c => c.charCodeAt(0))
   const key = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['decrypt'])
 
