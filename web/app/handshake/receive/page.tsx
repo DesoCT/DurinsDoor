@@ -10,6 +10,7 @@ import {
   importPrivateKey,
   importPublicKey,
   deriveSharedKey,
+  deriveRawSharedSecret,
   generatePairingCode,
 } from '@/lib/ecdh'
 import { deriveVerificationPhrase } from '@/lib/tolkien-words'
@@ -97,7 +98,9 @@ export default function HandshakeReceivePage() {
                   const senderPub = await importPublicKey(updated.sender_public_key)
                   const sharedKey = await deriveSharedKey(privateKey, senderPub)
                   sharedKeyRef.current = sharedKey
-                  const phrase = await deriveVerificationPhrase(sharedKey)
+                  // Use raw ECDH secret for verification phrase (matches Go CLI)
+                  const rawSecret = await deriveRawSharedSecret(privateKey, senderPub)
+                  const phrase = await deriveVerificationPhrase(rawSecret)
                   setVerificationPhrase(phrase)
                   setPageState('paired')
                 } catch (err) {

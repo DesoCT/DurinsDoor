@@ -9,7 +9,7 @@ export async function generateECDHKeyPair(): Promise<CryptoKeyPair> {
   return await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
-    ['deriveKey']
+    ['deriveKey', 'deriveBits']
   )
 }
 
@@ -45,7 +45,7 @@ export async function importPrivateKey(jwkStr: string): Promise<CryptoKey> {
     jwk,
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
-    ['deriveKey']
+    ['deriveKey', 'deriveBits']
   )
 }
 
@@ -64,6 +64,22 @@ export async function deriveSharedKey(
     { name: 'AES-GCM', length: 256 },
     true, // extractable for verification phrase export
     ['encrypt', 'decrypt']
+  )
+}
+
+/**
+ * Derive the raw ECDH shared secret (32 bytes) for verification phrase generation.
+ * This matches the Go CLI's DeriveSharedSecret which returns the raw ECDH output
+ * before any KDF is applied.
+ */
+export async function deriveRawSharedSecret(
+  myPrivateKey: CryptoKey,
+  theirPublicKey: CryptoKey
+): Promise<ArrayBuffer> {
+  return await crypto.subtle.deriveBits(
+    { name: 'ECDH', public: theirPublicKey },
+    myPrivateKey,
+    256,
   )
 }
 

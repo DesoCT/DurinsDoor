@@ -8,6 +8,7 @@ import {
   exportPublicKey,
   importPublicKey,
   deriveSharedKey,
+  deriveRawSharedSecret,
 } from '@/lib/ecdh'
 import { deriveVerificationPhrase } from '@/lib/tolkien-words'
 import { encryptFileWithKey, humanSize, fileIcon } from '@/lib/crypto'
@@ -73,8 +74,9 @@ export default function HandshakeSendPage() {
       const sharedKey = await deriveSharedKey(keypair.privateKey, receiverPub)
       sharedKeyRef.current = sharedKey
 
-      // Derive verification phrase
-      const phrase = await deriveVerificationPhrase(sharedKey)
+      // Derive verification phrase from raw ECDH secret (matches Go CLI)
+      const rawSecret = await deriveRawSharedSecret(keypair.privateKey, receiverPub)
+      const phrase = await deriveVerificationPhrase(rawSecret)
       setVerificationPhrase(phrase)
 
       // Update handshake in Supabase: add sender pubkey, set status = 'paired'
