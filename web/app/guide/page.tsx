@@ -249,6 +249,78 @@ durins-door revoke abc123
 durins-door --version`
               }</code>
             </div>
+
+            <p style={{ fontFamily: 'Cinzel, serif', fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '1.8rem 0 0.5rem' }}>
+              durins-door download &lt;url&gt;
+            </p>
+            <p className="ms-body">
+              Download and decrypt a shared file from a remote Durin&apos;s Door server.
+              The encryption key is extracted from the URL fragment.
+            </p>
+            <table className="rune-table">
+              <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td className="flag-cell">-o, --output</td><td className="default-cell">original filename</td><td className="desc-cell">Output file path</td></tr>
+              </tbody>
+            </table>
+
+            <p style={{ fontFamily: 'Cinzel, serif', fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '1.8rem 0 0.5rem' }}>
+              durins-door upload &lt;file&gt;
+            </p>
+            <p className="ms-body">
+              Upload a file to a remote Durin&apos;s Door server. Requires <code style={{ fontFamily: 'monospace', color: 'var(--elvish)', fontSize: '0.85em' }}>--api-token</code> or the <code style={{ fontFamily: 'monospace', color: 'var(--elvish)', fontSize: '0.85em' }}>DURINS_DOOR_TOKEN</code> environment variable.
+            </p>
+            <table className="rune-table">
+              <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td className="flag-cell">--password</td><td className="default-cell">(none)</td><td className="desc-cell">Password-protect the share</td></tr>
+                <tr><td className="flag-cell">--expires</td><td className="default-cell">(none)</td><td className="desc-cell">Expiry duration (24h, 7d, 30d)</td></tr>
+                <tr><td className="flag-cell">--max-downloads</td><td className="default-cell">0 (unlimited)</td><td className="desc-cell">Max download count</td></tr>
+              </tbody>
+            </table>
+
+            <p style={{ fontFamily: 'Cinzel, serif', fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '1.8rem 0 0.5rem' }}>
+              durins-door send &lt;file&gt; --to &lt;CODE&gt;
+            </p>
+            <p className="ms-body">
+              Send a file to a waiting receiver via ECDH P-256 handshake against a remote server.
+              Both parties see a 3-word Tolkien verification phrase to confirm no man-in-the-middle.
+            </p>
+            <table className="rune-table">
+              <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td className="flag-cell">--to</td><td className="default-cell">(required)</td><td className="desc-cell">Pairing code from the receiver</td></tr>
+                <tr><td className="flag-cell">--password</td><td className="default-cell">(none)</td><td className="desc-cell">Additional password layer on top of ECDH</td></tr>
+                <tr><td className="flag-cell">--expires</td><td className="default-cell">(none)</td><td className="desc-cell">Share expiry (24h, 7d)</td></tr>
+                <tr><td className="flag-cell">--max-downloads</td><td className="default-cell">0 (unlimited)</td><td className="desc-cell">Max download count</td></tr>
+              </tbody>
+            </table>
+
+            <p style={{ fontFamily: 'Cinzel, serif', fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '1.8rem 0 0.5rem' }}>
+              durins-door receive
+            </p>
+            <p className="ms-body">
+              Wait for a peer to send you a file via ECDH handshake. Generates a Tolkien-word pairing code,
+              then auto-downloads and decrypts the file when the sender uploads it. Times out after 10 minutes.
+            </p>
+            <table className="rune-table">
+              <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td className="flag-cell">-o, --output</td><td className="default-cell">. (current dir)</td><td className="desc-cell">Directory to save the received file</td></tr>
+              </tbody>
+            </table>
+
+            <p style={{ fontFamily: 'Cinzel, serif', fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '1.8rem 0 0.5rem' }}>
+              Global flags (all commands)
+            </p>
+            <table className="rune-table">
+              <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td className="flag-cell">--server-url</td><td className="default-cell">http://localhost:8888</td><td className="desc-cell">Durin&apos;s Door server URL</td></tr>
+                <tr><td className="flag-cell">--api-token</td><td className="default-cell">(none)</td><td className="desc-cell">Admin bearer token (also via DURINS_DOOR_TOKEN env var)</td></tr>
+                <tr><td className="flag-cell">--version</td><td className="default-cell"></td><td className="desc-cell">Print version and build date</td></tr>
+              </tbody>
+            </table>
           </section>
 
           <div className="ms-rune-divider">· · · ᛞ · · ·</div>

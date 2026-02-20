@@ -439,7 +439,8 @@
           <li data-rune="⏳"><strong>Auto-expiry</strong> — links vanish after the time you set</li>
           <li data-rune="🔢"><strong>Download limits</strong> — restrict to N downloads and the door seals itself</li>
           <li data-rune="🔑"><strong>Optional password</strong> — add a second layer for sensitive cargo</li>
-          <li data-rune="🌐"><strong>Auto-tunneling</strong> — built-in Cloudflare tunnel for instant public URLs</li>
+          <li data-rune="⇄"><strong>Handshake mode</strong> — peer-to-peer ECDH key exchange with Tolkien-word verification</li>
+          <li data-rune="🌐"><strong>Auto-tunneling</strong> — built-in Cloudflare/ngrok tunnel for instant public URLs</li>
           <li data-rune="🚫"><strong>Zero logs</strong> — no analytics, no tracking, no fingerprints</li>
         </ul>
       </section>
@@ -481,7 +482,7 @@
         </ol>
 
         <div class="stone-code" data-label="Terminal · Share Examples">
-          <code><span class="code-comment"># Share with default settings (24h, unlimited downloads)</span>
+          <code><span class="code-comment"># Share with default settings (1h expiry, unlimited downloads)</span>
 durins-door share secret-plans.pdf
 
 <span class="code-comment"># Share for 7 days</span>
@@ -596,10 +597,67 @@ curl -L -d "password=mellon" "https://your-server/d/abc123" -o output.zip</code>
 
       <div class="ms-rune-divider">· · · ᛊ · · ·</div>
 
-      <!-- ═══ CHAPTER V: Cloudflare Tunnel ═══ -->
+      <!-- ═══ CHAPTER V: Handshake Mode ═══ -->
       <section class="ms-section">
         <h2 class="ms-heading">
           <span class="ms-heading-rune">ᛊ</span>
+          Handshake Mode — Peer-to-Peer Transfer
+        </h2>
+        <p class="ms-body">
+          <strong>Handshake Mode</strong> enables direct peer-to-peer encrypted transfers without
+          sharing a URL. The receiver generates a Tolkien-word pairing code; the sender enters it.
+          An ECDH (P-256) key exchange derives a shared secret — the server never sees the key.
+        </p>
+        <ol class="ms-steps">
+          <li>
+            <div class="step-body">
+              <strong>Receiver runs <code style="font-family:'Courier New'; color:var(--elvish); font-size:0.88em">durins-door receive</code></strong>
+              — gets a pairing code (e.g. <span style="font-family:'Cinzel',serif; color:var(--elvish);">ARKENSTONE</span>)
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Receiver shares the code</strong> with the sender verbally or via any channel
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Sender runs <code style="font-family:'Courier New'; color:var(--elvish); font-size:0.88em">durins-door send file.pdf --to ARKENSTONE</code></strong>
+              — ECDH keys are exchanged
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Both see a verification phrase</strong> — 3 Tolkien words derived from the shared secret. Confirm they match!
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Sender confirms</strong> — the file is encrypted with the ECDH-derived AES key and uploaded
+            </div>
+          </li>
+          <li>
+            <div class="step-body">
+              <strong>Receiver auto-downloads</strong> — decrypted with the same derived key
+            </div>
+          </li>
+        </ol>
+        <div class="shield-box">
+          <span class="shield-box-icon">🤝</span>
+          <p class="shield-box-text">
+            The verification phrase (3 Tolkien words) works like Signal safety numbers — both sides must see
+            <strong>identical words</strong> to confirm the shared secret was derived correctly and no
+            man-in-the-middle is present.
+          </p>
+        </div>
+      </section>
+
+      <div class="ms-rune-divider">· · · ᛏ · · ·</div>
+
+      <!-- ═══ CHAPTER VI: Cloudflare Tunnel ═══ -->
+      <section class="ms-section">
+        <h2 class="ms-heading">
+          <span class="ms-heading-rune">ᛏ</span>
           Auto-Tunneling via Cloudflare
         </h2>
         <p class="ms-body">
@@ -628,12 +686,12 @@ durins-door share <span class="code-flag">--tunnel</span> myfile.zip
         </p>
       </section>
 
-      <div class="ms-rune-divider">· · · ᛏ · · ·</div>
+      <div class="ms-rune-divider">· · · ᛈ · · ·</div>
 
-      <!-- ═══ CHAPTER VI: Install ═══ -->
+      <!-- ═══ CHAPTER VII: Install ═══ -->
       <section class="ms-section">
         <h2 class="ms-heading">
-          <span class="ms-heading-rune">ᛏ</span>
+          <span class="ms-heading-rune">ᛈ</span>
           Install the CLI
         </h2>
         <p class="ms-body">
@@ -671,12 +729,12 @@ go install github.com/unisoniq/durins-door@latest</code>
         </div>
       </section>
 
-      <div class="ms-rune-divider">· · · ᛈ · · ·</div>
+      <div class="ms-rune-divider">· · · ᛞ · · ·</div>
 
-      <!-- ═══ CHAPTER VII: Server CLI Reference ═══ -->
+      <!-- ═══ CHAPTER VIII: Server CLI Reference ═══ -->
       <section class="ms-section">
         <h2 class="ms-heading">
-          <span class="ms-heading-rune">ᛈ</span>
+          <span class="ms-heading-rune">ᛞ</span>
           Server CLI Reference
         </h2>
         <p class="ms-body">
@@ -788,14 +846,156 @@ durins-door revoke abc123
 <span class="code-comment"># Check version</span>
 durins-door <span class="code-flag">--version</span></code>
         </div>
+
+        <!-- download command -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door download &lt;url&gt;
+        </p>
+        <p class="ms-body">
+          Download and decrypt a shared file from a remote Durin's Door server.
+          The encryption key is extracted from the URL fragment.
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">-o, --output</td>
+              <td class="default-cell">original filename</td>
+              <td class="desc-cell">Output file path</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- upload command -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door upload &lt;file&gt;
+        </p>
+        <p class="ms-body">
+          Upload a file to a remote Durin's Door server.
+          Requires <code style="font-family:'Courier New'; color:var(--elvish); font-size:0.88em">--api-token</code>
+          or the <code style="font-family:'Courier New'; color:var(--elvish); font-size:0.88em">DURINS_DOOR_TOKEN</code> environment variable.
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--password</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Password-protect the share</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--expires</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Expiry duration (24h, 7d, 30d)</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--max-downloads</td>
+              <td class="default-cell">0 (unlimited)</td>
+              <td class="desc-cell">Max download count</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- send command -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door send &lt;file&gt; --to &lt;CODE&gt;
+        </p>
+        <p class="ms-body">
+          Send a file to a waiting receiver via ECDH P-256 handshake against a remote server.
+          Both parties see a 3-word Tolkien verification phrase to confirm no man-in-the-middle.
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--to</td>
+              <td class="default-cell">(required)</td>
+              <td class="desc-cell">Pairing code from the receiver</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--password</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Additional password layer on top of ECDH</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--expires</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Share expiry (24h, 7d)</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--max-downloads</td>
+              <td class="default-cell">0 (unlimited)</td>
+              <td class="desc-cell">Max download count</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- receive command -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          durins-door receive
+        </p>
+        <p class="ms-body">
+          Wait for a peer to send you a file via ECDH handshake. Generates a Tolkien-word pairing code,
+          then auto-downloads and decrypts the file when the sender uploads it. Times out after 10 minutes.
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">-o, --output</td>
+              <td class="default-cell">. (current dir)</td>
+              <td class="desc-cell">Directory to save the received file</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- global flags -->
+        <p style="font-family:'Cinzel',serif; font-size:0.78rem; color:var(--text-dim);
+                  text-transform:uppercase; letter-spacing:0.12em; margin:1.8rem 0 0.5rem;">
+          Global flags (all commands)
+        </p>
+        <table class="rune-table">
+          <thead>
+            <tr><th>Flag</th><th>Default</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="flag-cell">--server-url</td>
+              <td class="default-cell">http://localhost:8888</td>
+              <td class="desc-cell">Durin's Door server URL</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--api-token</td>
+              <td class="default-cell">(none)</td>
+              <td class="desc-cell">Admin bearer token (also via DURINS_DOOR_TOKEN env var)</td>
+            </tr>
+            <tr>
+              <td class="flag-cell">--version</td>
+              <td class="default-cell"></td>
+              <td class="desc-cell">Print version and build date</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
-      <div class="ms-rune-divider">· · · ᛞ · · ·</div>
+      <div class="ms-rune-divider">· · · ᛟ · · ·</div>
 
-      <!-- ═══ CHAPTER VIII: Cloud CLI Reference ═══ -->
+      <!-- ═══ CHAPTER IX: Cloud CLI Reference ═══ -->
       <section class="ms-section">
         <h2 class="ms-heading">
-          <span class="ms-heading-rune">ᛞ</span>
+          <span class="ms-heading-rune">ᛟ</span>
           Cloud CLI Reference
         </h2>
         <p class="ms-body">
