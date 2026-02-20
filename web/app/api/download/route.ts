@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * POST /api/download
@@ -20,10 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Use service role key to bypass RLS for server-side verification
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
+    const supabase = createAdminClient()
 
     const { data: share, error } = await supabase
       .from('shares')
