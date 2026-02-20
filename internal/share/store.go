@@ -101,6 +101,18 @@ func (s *Store) migrate() error {
 			size          INTEGER NOT NULL DEFAULT 0
 		);
 		CREATE INDEX IF NOT EXISTS idx_shares_expires ON shares(expires_at);
+
+		CREATE TABLE IF NOT EXISTS handshakes (
+			id                  TEXT PRIMARY KEY,
+			code                TEXT UNIQUE NOT NULL,
+			receiver_public_key TEXT NOT NULL,
+			sender_public_key   TEXT NOT NULL DEFAULT '',
+			share_id            TEXT NOT NULL DEFAULT '',
+			created_at          INTEGER NOT NULL,
+			expires_at          INTEGER NOT NULL
+		);
+		CREATE INDEX IF NOT EXISTS idx_handshakes_code ON handshakes(code);
+		CREATE INDEX IF NOT EXISTS idx_handshakes_expires ON handshakes(expires_at);
 	`)
 	return err
 }

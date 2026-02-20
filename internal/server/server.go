@@ -80,6 +80,12 @@ func (s *Server) registerRoutes() {
 	s.mux.Handle("/admin/", loggingMiddleware(adminHandler))
 	s.mux.Handle("/admin/revoke/", loggingMiddleware(revokeHandler))
 	s.mux.Handle("/api/shares", loggingMiddleware(apiSharesHandler))
+
+	// JSON API routes (token-protected)
+	s.mux.Handle("/api/upload", loggingMiddleware(adminAuthMiddleware(s.adminToken, http.HandlerFunc(s.handleAPIUpload))))
+	s.mux.Handle("/api/shares/", loggingMiddleware(adminAuthMiddleware(s.adminToken, http.HandlerFunc(s.handleAPIShareGet))))
+	s.mux.Handle("/api/handshakes", loggingMiddleware(adminAuthMiddleware(s.adminToken, http.HandlerFunc(s.handleAPIHandshakes))))
+	s.mux.Handle("/api/handshakes/", loggingMiddleware(adminAuthMiddleware(s.adminToken, http.HandlerFunc(s.handleAPIHandshakeByID))))
 }
 
 // Start starts the HTTP server and blocks until the context is cancelled.
@@ -135,6 +141,12 @@ func (s *Server) runCleanup(ctx context.Context) {
 				log.Printf("cleanup error: %v", err)
 			} else if n > 0 {
 				log.Printf("cleaned up %d expired share(s)", n)
+			}
+			hn, err := s.store.PurgeHandshakes(ctx)
+			if err != nil {
+				log.Printf("handshake cleanup error: %v", err)
+			} else if hn > 0 {
+				log.Printf("cleaned up %d expired handshake(s)", hn)
 			}
 		}
 	}
