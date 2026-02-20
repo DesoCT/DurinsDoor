@@ -219,7 +219,6 @@ export default function HandshakeSendPage() {
                   className="btn-elvish"
                   onClick={handleConnect}
                   disabled={pageState === 'looking' || code.trim().length < 6}
-                  style={{ flexShrink: 0 }}
                 >
                   {pageState === 'looking' ? '…' : 'Connect'}
                 </button>

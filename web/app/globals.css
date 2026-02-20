@@ -1387,9 +1387,10 @@ body {
 
 .code-input-wrap {
   display: flex;
+  flex-direction: column;
   gap: 0.75rem;
   align-items: stretch;
-  max-width: 360px;
+  max-width: 320px;
   margin: 1.5rem auto;
 }
 
