@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultServerURL = "http://localhost:8888"
+	DefaultServerURL = "https://durinsdoor.io"
 )
 
 // Version and BuildDate are set via ldflags at build time.
