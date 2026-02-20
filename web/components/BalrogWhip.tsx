@@ -652,22 +652,76 @@ export default function BalrogWhip() {
 }
 
 /* ══════════════════════════════════════════════════════
-   Overlay HTML generators for caught sequence
+   ASCII Art & Overlay generators for caught sequence
    ══════════════════════════════════════════════════════ */
+
+const BALROG_ASCII = `
+        )  (  (     )
+     (   )  ) )  ( (
+       \\  { }  /
+        \\{   }/
+    .----{   }----.
+   /  .-'{   }'-.  \\
+  / .'  /{   }\\  '. \\
+ / /   / {   } \\   \\ \\
+| ;   ;  {   }  ;   ; |
+ \\ \\   \\ { , } /   / /
+  \\ '.  \\{/ \\}/  .' /
+   \\  '-..___...-'  /
+    '-----._.------'
+     /  (o   o)  \\
+    |   /|   |\\   |
+    |  / |   | \\  |
+     \\/  |   |  \\/
+         |   |
+    ~~~~~ | | ~~~~~
+   ~~~~~~~   ~~~~~~~
+  ~~~~~~~~~^~~~~~~~~~
+`
+
+const GANDALF_ASCII = `
+       _____
+      /     \\
+     | () () |
+      \\  ^  /
+    ___|\\ /|___
+   /   |     |   \\
+  /    |  |  |    \\
+       | /|\\ |
+       |/ | \\|
+       /  |  \\
+      /   |   \\
+`
+
+const FALLING_ASCII = `
+  \\       |       /
+   \\   \\  |  /   /
+    \\   \\ | /   /
+     '.  \\|/  .'
+       '-.V.-'
+      ___/ \\___
+     /    |    \\
+    /     |     \\
+   /   \\  |  /   \\
+  .     '.|.'     .
+  :    __/ \\__    :
+  '.  /       \\  .'
+    '/    |    \\'
+     \\   |   /
+      \\  |  /
+       \\_|_/
+        \\|/
+`
 
 function createBalrogRising(t: number): string {
   const scale = 0.5 + t * 0.9
   const glowOpacity = t * 0.7
   return `
     <div class="balrog-scene">
-      <div class="balrog-creature" style="transform: scale(${scale}) translateY(${(1 - t) * 50}%); opacity: ${Math.min(t * 1.8, 1)}">
-        <div class="balrog-horns">&#x2726; &#x2726;</div>
-        <div class="balrog-eyes">&#x25C9; &#x25C9;</div>
-        <div class="balrog-body-shape"></div>
-      </div>
+      <pre class="balrog-ascii" style="transform: scale(${scale}) translateY(${(1 - t) * 50}%); opacity: ${Math.min(t * 1.8, 1)}">${escHtml(BALROG_ASCII)}</pre>
       <div class="balrog-fire-glow" style="opacity: ${glowOpacity}"></div>
       <div class="mine-text" style="opacity: ${Math.max(0, t - 0.4) * 1.7}">
-        <em>A Balrog of Morgoth…</em><br>
+        <em>A Balrog of Morgoth&hellip;</em><br>
         <em style="font-size: 0.8em; opacity: 0.7">What did you say?</em>
       </div>
     </div>
@@ -679,30 +733,23 @@ function createYouShallNotPass(t: number): string {
   const shake = t < 0.5 ? `translateX(${Math.sin(t * 50) * 3}px)` : ''
   return `
     <div class="balrog-scene">
-      <div class="balrog-creature" style="transform: scale(1.3); opacity: 0.6">
-        <div class="balrog-horns">&#x2726; &#x2726;</div>
-        <div class="balrog-eyes" style="color: #ff3300">&#x25C9; &#x25C9;</div>
-        <div class="balrog-body-shape"></div>
-      </div>
+      <pre class="balrog-ascii balrog-ascii-bg" style="transform: scale(1.3); opacity: 0.4">${escHtml(BALROG_ASCII)}</pre>
       <div class="balrog-fire-glow" style="opacity: 0.9"></div>
       <div class="ysnp-text" style="transform: scale(${scale}) ${shake}; opacity: ${Math.min(t * 2.5, 1)}">
         YOU SHALL NOT PASS
       </div>
-      <div class="gandalf-silhouette-scene" style="opacity: ${Math.min(t * 2, 1)}">&#x1F9D9;</div>
+      <pre class="gandalf-ascii" style="opacity: ${Math.min(t * 2, 1)}">${escHtml(GANDALF_ASCII)}</pre>
     </div>
   `
 }
 
 function createFalling(t: number): string {
   const fallY = t * 250
-  const spin = t * 540
   const fadeText = Math.max(0, 1 - t * 1.2)
   return `
     <div class="balrog-scene falling-scene">
       <div class="falling-darkness" style="opacity: ${0.2 + t * 0.8}"></div>
-      <div class="falling-figure" style="transform: translateY(${fallY}px) rotate(${spin}deg); opacity: ${1 - t * 0.9}">
-        &#x1F9D9;
-      </div>
+      <pre class="falling-ascii" style="transform: translateY(${fallY}px); opacity: ${1 - t * 0.9}">${escHtml(FALLING_ASCII)}</pre>
       <div class="falling-text" style="opacity: ${fadeText}; transform: translateY(${t * 40}px)">
         <div class="bridge-quote">&ldquo;Fly, you fools!&rdquo;</div>
         <div class="bridge-sub">&mdash; Gandalf, Bridge of Khazad-d&ucirc;m</div>
@@ -725,6 +772,10 @@ function createFadeOut(t: number, score: number): string {
       </div>
     </div>
   `
+}
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 /* ── Math helpers ── */

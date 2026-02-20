@@ -1865,63 +1865,62 @@ a:hover { color: var(--silver-glow); }
   overflow: hidden;
 }
 
-.balrog-creature {
+/* Balrog ASCII art */
+.balrog-ascii {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(0.4rem, 1.2vw, 0.75rem);
+  line-height: 1.15;
+  color: #ff4400;
+  text-shadow:
+    0 0 8px rgba(255, 60, 0, 0.9),
+    0 0 25px rgba(255, 30, 0, 0.6),
+    0 0 50px rgba(200, 0, 0, 0.3);
+  white-space: pre;
   text-align: center;
   z-index: 2;
-  filter: drop-shadow(0 0 40px rgba(255, 60, 0, 0.8));
+  margin: 0;
+  animation: asciiFireFlicker 0.2s ease-in-out infinite alternate;
 }
 
-.balrog-horns {
-  font-size: 3.5rem;
-  color: #ff4400;
-  text-shadow: 0 0 20px rgba(255, 40, 0, 0.9), 0 0 60px rgba(255, 0, 0, 0.5);
-  line-height: 1;
-  letter-spacing: 2rem;
-}
-
-.balrog-eyes {
-  font-size: 1.8rem;
-  color: #ff6600;
-  text-shadow: 0 0 15px #ff3300, 0 0 40px #ff0000;
-  letter-spacing: 1.5rem;
-  margin: -0.3rem 0;
-  animation: balrogEyeFlicker 0.15s ease-in-out infinite alternate;
-}
-
-@keyframes balrogEyeFlicker {
-  0% { opacity: 0.8; text-shadow: 0 0 15px #ff3300, 0 0 40px #ff0000; }
-  100% { opacity: 1; text-shadow: 0 0 25px #ff6600, 0 0 60px #ff0000, 0 0 90px rgba(255, 0, 0, 0.4); }
-}
-
-/* Balrog body — dark silhouette with fire cracks */
-.balrog-body-shape {
-  width: 100px;
-  height: 120px;
-  margin: -0.5rem auto 0;
-  background: radial-gradient(ellipse at 50% 30%, #1a0800 0%, #0a0200 60%, transparent 100%);
-  border-radius: 40% 40% 50% 50%;
-  position: relative;
-  box-shadow:
-    0 0 40px rgba(255, 40, 0, 0.3),
-    0 0 80px rgba(200, 0, 0, 0.15),
-    inset 0 -20px 40px rgba(255, 60, 0, 0.2);
-}
-
-.balrog-body-shape::before {
-  content: '';
+.balrog-ascii-bg {
   position: absolute;
-  inset: 10%;
-  background:
-    radial-gradient(circle at 30% 40%, rgba(255, 60, 0, 0.4) 0%, transparent 30%),
-    radial-gradient(circle at 70% 60%, rgba(255, 40, 0, 0.3) 0%, transparent 25%),
-    radial-gradient(circle at 50% 80%, rgba(255, 80, 0, 0.35) 0%, transparent 35%);
-  border-radius: inherit;
-  animation: bodyFirePulse 0.5s ease-in-out infinite alternate;
+  animation: asciiFireFlicker 0.15s ease-in-out infinite alternate;
 }
 
-@keyframes bodyFirePulse {
-  0% { opacity: 0.6; }
-  100% { opacity: 1; }
+@keyframes asciiFireFlicker {
+  0% {
+    color: #cc3300;
+    text-shadow: 0 0 8px rgba(255, 50, 0, 0.8), 0 0 25px rgba(255, 20, 0, 0.5), 0 0 50px rgba(180, 0, 0, 0.3);
+  }
+  100% {
+    color: #ff5500;
+    text-shadow: 0 0 12px rgba(255, 80, 0, 1), 0 0 35px rgba(255, 40, 0, 0.8), 0 0 70px rgba(255, 0, 0, 0.4);
+  }
+}
+
+/* Gandalf ASCII art */
+.gandalf-ascii {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(0.35rem, 1vw, 0.6rem);
+  line-height: 1.15;
+  color: rgba(180, 200, 230, 0.7);
+  text-shadow: 0 0 10px rgba(180, 200, 255, 0.3), 0 0 30px rgba(120, 160, 220, 0.15);
+  white-space: pre;
+  text-align: center;
+  z-index: 3;
+  margin-top: 1rem;
+}
+
+/* Falling ASCII art */
+.falling-ascii {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: clamp(0.35rem, 1vw, 0.55rem);
+  line-height: 1.15;
+  color: rgba(160, 140, 120, 0.6);
+  text-shadow: 0 0 8px rgba(255, 60, 0, 0.3);
+  white-space: pre;
+  text-align: center;
+  z-index: 3;
 }
 
 .balrog-fire-glow {
@@ -1975,12 +1974,7 @@ a:hover { color: var(--silver-glow); }
   100% { text-shadow: 0 0 15px #fff, 0 0 40px rgba(255,220,120,1), 0 0 80px rgba(255,120,0,0.9), 0 0 120px rgba(255,40,0,0.6); }
 }
 
-.gandalf-silhouette-scene {
-  font-size: clamp(3rem, 8vw, 6rem);
-  z-index: 3;
-  filter: brightness(0.3) drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
-  margin-top: 1rem;
-}
+/* gandalf-silhouette-scene removed — using ASCII art now */
 
 .caught-score {
   font-family: 'Cinzel', serif;
@@ -2001,11 +1995,7 @@ a:hover { color: var(--silver-glow); }
   z-index: 1;
 }
 
-.falling-figure {
-  font-size: clamp(3rem, 8vw, 5rem);
-  z-index: 3;
-  filter: brightness(0.6) drop-shadow(0 0 10px rgba(255, 255, 255, 0.2));
-}
+/* falling-figure removed — using ASCII art now */
 
 .falling-text {
   z-index: 4;
