@@ -53,6 +53,9 @@ export default function BalrogWhip() {
   const dodgeCountRef = useRef(0)
   const gameStateRef = useRef<GameState>('off')
   const scoreRef = useRef(0)
+  // New: randomised origin per attack + baked per-segment jitter
+  const originRef = useRef({ x: -30, y: 0 })
+  const jitterRef = useRef<{ dx: number; dy: number }[]>([])
 
   // Keep ref in sync with state
   useEffect(() => { gameStateRef.current = gameState }, [gameState])
@@ -66,6 +69,39 @@ export default function BalrogWhip() {
       if (gameStateRef.current !== 'playing') return
       if (mouseRef.current.x < 0) { scheduleAttack(1000); return }
       if (whipPhaseRef.current !== 'idle') return
+
+      // ── Pick a random bottom-half edge for the whip origin ──
+      const canvas = canvasRef.current
+      const W = canvas ? canvas.width : window.innerWidth
+      const H = canvas ? canvas.height : window.innerHeight
+      const edge = Math.floor(Math.random() * 3) // 0=bottom, 1=left, 2=right
+      let ox: number, oy: number
+      if (edge === 0) {
+        // Bottom edge — any x position
+        ox = Math.random() * W
+        oy = H + 30
+      } else if (edge === 1) {
+        // Left edge — any y in the bottom half
+        ox = -30
+        oy = H / 2 + Math.random() * (H / 2)
+      } else {
+        // Right edge — any y in the bottom half
+        ox = W + 30
+        oy = H / 2 + Math.random() * (H / 2)
+      }
+      originRef.current = { x: ox, y: oy }
+
+      // ── Bake per-segment random jitter (used by draw) ──
+      const SEG = 60
+      const baked: { dx: number; dy: number }[] = []
+      for (let i = 0; i <= SEG; i++) {
+        baked.push({
+          dx: (Math.random() - 0.5) * 2,   // −1 … +1
+          dy: (Math.random() - 0.5) * 2,
+        })
+      }
+      jitterRef.current = baked
+
       whipPhaseRef.current = 'extending'
       startTimeRef.current = performance.now()
       targetRef.current = { ...mouseRef.current }
@@ -174,8 +210,9 @@ export default function BalrogWhip() {
     const mx = targetRef.current.x
     const my = targetRef.current.y
 
-    const ox = -30
-    const oy = H + 30
+    // Use the stored randomised origin for this attack
+    const ox = originRef.current.x
+    const oy = originRef.current.y
 
     let t = 0
 
@@ -209,7 +246,7 @@ export default function BalrogWhip() {
       }
     }
 
-    // ── S-curve whip shape ──
+    // ── Erratic chain-physics whip shape ──
     const dx = mx - ox
     const dy = my - oy
     const len = Math.sqrt(dx * dx + dy * dy) || 1
@@ -218,27 +255,60 @@ export default function BalrogWhip() {
 
     const SEG = 60
     const points: { x: number; y: number }[] = []
+    const jitter = jitterRef.current
 
     for (let i = 0; i <= SEG; i++) {
-      const s = i / SEG
-      const arrival = Math.min(t * 1.3 - s * 0.3, 1)
+      const s = i / SEG  // 0 = root, 1 = tip
+
+      // Chain-like propagation: each segment receives the crack wave
+      // with a delay that is non-linear — the crack front travels faster
+      // near the root, slower toward the tip, then the tip snaps hard.
+      // arrival: 0→not yet reached, 1→fully arrived
+      const chainLag = s * s * 0.45           // quadratic lag toward tip
+      const arrival = Math.min(t * 1.5 - chainLag, 1)
       if (arrival <= 0) break
 
-      const easedS = easeOutQuart(Math.min(arrival, 1))
+      const easedArrival = easeOutQuart(Math.min(arrival, 1))
 
-      let px = ox + dx * s * easedS
-      let py = oy + dy * s * easedS
+      // Base position along the line root→target
+      let px = ox + dx * s * easedArrival
+      let py = oy + dy * s * easedArrival
 
-      // S-wave traveling displacement
-      const waveProgress = Math.max(0, t * 2.5 - s * 1.5)
-      const envelope = Math.sin(s * Math.PI)
-      const dampening = Math.max(0, 1 - t * 1.2)
-      const waveAmp = envelope * dampening * 100 * Math.min(waveProgress, 1)
-      const waveFreq = s * Math.PI * 3 - t * 10
-      const displacement = Math.sin(waveFreq) * waveAmp
+      // ── Erratic multi-frequency wave ──
+      // Amplitude builds toward the tip and collapses as t→1 (snap spent)
+      const envelope = Math.sin(s * Math.PI) * Math.pow(s + 0.05, 0.4)
+      const energyLeft = Math.max(0, 1 - t * 1.1)
+      const waveProgress = Math.max(0, t * 3.5 - s * 2.0)
+      const baseAmp = envelope * energyLeft * 130 * Math.min(waveProgress, 1)
+
+      // Three overlapping waves at inharmonic frequencies → erratic look
+      const j = jitter[i] ?? { dx: 0, dy: 0 }
+      const w1 = Math.sin(s * Math.PI * 3.7 - t * 14 + j.dx * 1.2)
+      const w2 = Math.sin(s * Math.PI * 6.1 - t * 23 + j.dy * 0.9) * 0.45
+      const w3 = Math.sin(s * Math.PI * 1.9 - t * 8.5 + (j.dx - j.dy) * 0.7) * 0.3
+      const displacement = (w1 + w2 + w3) * baseAmp
 
       px += perpX * displacement
       py += perpY * displacement
+
+      // ── Tip snap (last 18 % of segments) ──
+      // A sharp, sudden kick perpendicular + along the whip — like the crack
+      // of a real whip, arrives between t=0.55 and t=0.82
+      const tipFrac = Math.max(0, (s - 0.82) / 0.18)
+      if (tipFrac > 0) {
+        const snapT = Math.max(0, Math.min((t - 0.55) / 0.27, 1))
+        const snapEnvelope = snapT * (1 - snapT) * 4   // peaks at snapT=0.5
+        const snapMag = tipFrac * snapEnvelope * 70 * (1 + Math.abs(j.dx))
+        // Direction: perpendicular kick + signed jitter gives each crack a
+        // slightly different character
+        const snapDir = Math.sign(j.dx + 0.001)   // ±1 per attack
+        px += perpX * snapMag * snapDir
+        py += perpY * snapMag * snapDir
+        // A secondary backward flick — gives the "crack" hook shape
+        const flick = tipFrac * snapEnvelope * 35 * Math.abs(j.dy)
+        px -= (dx / len) * flick
+        py -= (dy / len) * flick
+      }
 
       points.push({ x: px, y: py })
     }
@@ -246,20 +316,6 @@ export default function BalrogWhip() {
     if (points.length < 2) {
       rafRef.current = requestAnimationFrame(draw)
       return
-    }
-
-    // Tip curl
-    if (t > 0.7 && points.length > 5) {
-      const curlAmount = Math.min((t - 0.7) / 0.3, 1)
-      const curlSegs = Math.min(8, points.length - 1)
-      for (let i = 0; i < curlSegs; i++) {
-        const idx = points.length - 1 - i
-        if (idx < 1) break
-        const curlFactor = (1 - i / curlSegs) * curlAmount * 25
-        const angle = curlAmount * Math.PI * 1.2 * (1 - i / curlSegs)
-        points[idx].x += perpX * curlFactor * Math.cos(angle) - (dx / len) * curlFactor * Math.sin(angle) * 0.5
-        points[idx].y += perpY * curlFactor * Math.cos(angle) - (dy / len) * curlFactor * Math.sin(angle) * 0.5
-      }
     }
 
     const flicker = 0.75 + 0.25 * Math.sin(now * 0.025) * Math.cos(now * 0.017)
