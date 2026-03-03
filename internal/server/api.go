@@ -347,27 +347,6 @@ func (s *Server) handleAPIShareDelete(w http.ResponseWriter, r *http.Request, id
 	json.NewEncoder(w).Encode(map[string]string{"status": "revoked", "id": id})
 }
 
-// --- List shares endpoint (already exists as admin-only, adding public version) ---
-
-// handleAPISharesList handles GET /api/shares (list all shares)
-func (s *Server) handleAPISharesList(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	shares, err := s.store.List(r.Context())
-	if err != nil {
-		jsonError(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
-	result := make([]apiShare, 0, len(shares))
-	for _, sh := range shares {
-		result = append(result, shareToAPI(sh))
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
-}
-
 // --- Handshake endpoints ---
 
 // handleAPIHandshakes handles POST /api/handshakes (create) and GET /api/handshakes?code=X (lookup)
