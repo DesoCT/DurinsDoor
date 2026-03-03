@@ -92,6 +92,9 @@ func handshakeToAPI(h *share.Handshake) apiHandshake {
 
 // --- Upload endpoint ---
 
+// maxUploadSize is the server-side upload limit (50 MB), matching the client.
+const maxUploadSize = 50 << 20 // 50 MB
+
 // handleAPIUpload handles POST /api/upload
 // Accepts multipart form: file + JSON metadata fields.
 // Encrypts the file server-side and stores it.
@@ -101,9 +104,12 @@ func (s *Server) handleAPIUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse multipart form (max 512MB)
-	if err := r.ParseMultipartForm(512 << 20); err != nil {
-		jsonError(w, "Invalid multipart form: "+err.Error(), http.StatusBadRequest)
+	// Enforce server-side max upload size (50 MB) before reading any body.
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+
+	// Parse multipart form (memory buffer capped to maxUploadSize; disk not used)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		jsonError(w, "Upload too large or invalid multipart form: "+err.Error(), http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -273,6 +279,8 @@ func (s *Server) handleAPIShareGet(w http.ResponseWriter, r *http.Request) {
 
 // handleAPIShareFile handles GET /api/shares/{id}/file
 // Returns the encrypted file as-is (the CLI decrypts client-side).
+// If the share is password-protected, the caller must supply the correct
+// password via the X-Share-Password header.
 func (s *Server) handleAPIShareFile(w http.ResponseWriter, r *http.Request, id string) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -296,6 +304,23 @@ func (s *Server) handleAPIShareFile(w http.ResponseWriter, r *http.Request, id s
 	if sh.IsExhausted() {
 		jsonError(w, "Download limit reached", http.StatusGone)
 		return
+	}
+
+	// --- Password verification ---
+	if sh.PasswordHash != "" {
+		provided := r.Header.Get("X-Share-Password")
+		if provided == "" {
+			// Also accept via query param for flexibility (e.g. direct browser links)
+			provided = r.URL.Query().Get("password")
+		}
+		if provided == "" {
+			jsonError(w, "Password required", http.StatusUnauthorized)
+			return
+		}
+		if err := bcrypt.CompareHashAndPassword([]byte(sh.PasswordHash), []byte(provided)); err != nil {
+			jsonError(w, "Invalid password", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	f, err := os.Open(sh.EncryptedPath)
