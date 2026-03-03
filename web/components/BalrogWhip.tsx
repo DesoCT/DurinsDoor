@@ -246,68 +246,93 @@ export default function BalrogWhip() {
       }
     }
 
-    // ── Erratic chain-physics whip shape ──
+    // ── Propagating wave-front whip ──
+    // The key insight: a real whip doesn't vibrate in place along a straight
+    // line. The *leading point* (wave front) sweeps through a wide arc on its
+    // way to the target, and the body trails behind it like a ribbon. Segments
+    // behind the front settle toward the straight line as the energy passes
+    // through them.
     const dx = mx - ox
     const dy = my - oy
     const len = Math.sqrt(dx * dx + dy * dy) || 1
-    const perpX = -dy / len
-    const perpY = dx / len
+    const dirX = dx / len
+    const dirY = dy / len
+    const perpX = -dirY
+    const perpY = dirX
 
     const SEG = 60
     const points: { x: number; y: number }[] = []
     const jitter = jitterRef.current
 
+    // The wave front position along the whip (0→1). It advances faster
+    // than `t` so the tip arrives before t=1, leaving time for the snap.
+    const waveFront = Math.min(t * 1.35, 1)
+
+    // Per-attack sweep direction and magnitude (baked in jitter[0])
+    const j0 = jitter[0] ?? { dx: 0.5, dy: 0.3 }
+    const sweepSign = Math.sign(j0.dx + 0.001) // ±1 — which side the arc goes
+    const sweepMag = 0.25 + Math.abs(j0.dy) * 0.15 // 0.25–0.40 of total length
+
     for (let i = 0; i <= SEG; i++) {
       const s = i / SEG  // 0 = root, 1 = tip
 
-      // Chain-like propagation: each segment receives the crack wave
-      // with a delay that is non-linear — the crack front travels faster
-      // near the root, slower toward the tip, then the tip snaps hard.
-      // arrival: 0→not yet reached, 1→fully arrived
-      const chainLag = s * s * 0.45           // quadratic lag toward tip
-      const arrival = Math.min(t * 1.5 - chainLag, 1)
-      if (arrival <= 0) break
+      // How far past this segment the wave front has gone.
+      // >0 means the wave has passed; 0 means it's at this point; <0 means
+      // the wave hasn't reached here yet.
+      const wake = waveFront - s
+      if (wake < -0.02) break  // segment not yet reached
 
-      const easedArrival = easeOutQuart(Math.min(arrival, 1))
+      // ── Trail factor: how much this segment has "settled" ──
+      // Just behind the wave front: maximum displacement (the arc).
+      // Far behind: settled onto the straight line toward target.
+      // The settling is smooth — like a ribbon falling after the wave passes.
+      const settleRate = 3.5  // how fast segments settle after the front passes
+      const settled = Math.min(Math.max(wake * settleRate, 0), 1)
+      const unsettled = 1 - easeOutQuart(settled)
 
-      // Base position along the line root→target
-      let px = ox + dx * s * easedArrival
-      let py = oy + dy * s * easedArrival
+      // ── Arc path: the wave front sweeps in a smooth curve ──
+      // At the front (unsettled=1), the segment follows a wide arc.
+      // The arc is a lateral offset that peaks at s≈0.4 and returns to 0 at s=1.
+      const arcShape = Math.sin(s * Math.PI) // 0 at root, peaks mid-whip, 0 at tip
+      const arcOffset = arcShape * sweepMag * len * sweepSign * unsettled
 
-      // ── Erratic multi-frequency wave ──
-      // Amplitude builds toward the tip and collapses as t→1 (snap spent)
-      const envelope = Math.sin(s * Math.PI) * Math.pow(s + 0.05, 0.4)
-      const energyLeft = Math.max(0, 1 - t * 1.1)
-      const waveProgress = Math.max(0, t * 3.5 - s * 2.0)
-      const baseAmp = envelope * energyLeft * 130 * Math.min(waveProgress, 1)
+      // ── Position: blend between arc path and straight line ──
+      // Straight-line position (where the segment wants to end up)
+      const straightX = ox + dx * s
+      const straightY = oy + dy * s
 
-      // Three overlapping waves at inharmonic frequencies → erratic look
+      // The leading edge hasn't reached the full extent yet — scale by waveFront
+      const reachScale = Math.min(s / Math.max(waveFront, 0.01), 1)
+      const reachEased = easeOutQuart(Math.min(reachScale, 1))
+
+      let px = ox + dx * s * reachEased + perpX * arcOffset
+      let py = oy + dy * s * reachEased + perpY * arcOffset
+
+      // ── Secondary ripple: smaller waves trail behind the front ──
+      // These give the whip its organic, rope-like character.
       const j = jitter[i] ?? { dx: 0, dy: 0 }
-      const w1 = Math.sin(s * Math.PI * 3.7 - t * 14 + j.dx * 1.2)
-      const w2 = Math.sin(s * Math.PI * 6.1 - t * 23 + j.dy * 0.9) * 0.45
-      const w3 = Math.sin(s * Math.PI * 1.9 - t * 8.5 + (j.dx - j.dy) * 0.7) * 0.3
-      const displacement = (w1 + w2 + w3) * baseAmp
+      const rippleZone = Math.max(0, Math.min(wake * 8, 1)) * unsettled
+      const ripple1 = Math.sin(s * Math.PI * 5 - t * 12 + j.dx) * 18 * rippleZone
+      const ripple2 = Math.sin(s * Math.PI * 8.3 - t * 19 + j.dy) * 8 * rippleZone
 
-      px += perpX * displacement
-      py += perpY * displacement
+      px += perpX * (ripple1 + ripple2)
+      py += perpY * (ripple1 + ripple2)
 
-      // ── Tip snap (last 18 % of segments) ──
-      // A sharp, sudden kick perpendicular + along the whip — like the crack
-      // of a real whip, arrives between t=0.55 and t=0.82
-      const tipFrac = Math.max(0, (s - 0.82) / 0.18)
-      if (tipFrac > 0) {
-        const snapT = Math.max(0, Math.min((t - 0.55) / 0.27, 1))
-        const snapEnvelope = snapT * (1 - snapT) * 4   // peaks at snapT=0.5
-        const snapMag = tipFrac * snapEnvelope * 70 * (1 + Math.abs(j.dx))
-        // Direction: perpendicular kick + signed jitter gives each crack a
-        // slightly different character
-        const snapDir = Math.sign(j.dx + 0.001)   // ±1 per attack
-        px += perpX * snapMag * snapDir
-        py += perpY * snapMag * snapDir
-        // A secondary backward flick — gives the "crack" hook shape
-        const flick = tipFrac * snapEnvelope * 35 * Math.abs(j.dy)
-        px -= (dx / len) * flick
-        py -= (dy / len) * flick
+      // ── Tip snap: sharp flick when the wave front reaches the end ──
+      if (s > 0.85 && waveFront > 0.9) {
+        const tipS = (s - 0.85) / 0.15
+        const snapProgress = Math.max(0, (waveFront - 0.9) / 0.1)
+        const snapPeak = snapProgress * (1 - snapProgress * 0.5) * 2
+        const snapMag = tipS * snapPeak * 60 * (1 + Math.abs(j.dx) * 0.5)
+
+        // Flick perpendicular (opposite to sweep direction for the "crack")
+        px += perpX * snapMag * -sweepSign
+        py += perpY * snapMag * -sweepSign
+
+        // Hook back along the whip direction
+        const hook = tipS * snapPeak * 30
+        px -= dirX * hook
+        py -= dirY * hook
       }
 
       points.push({ x: px, y: py })
