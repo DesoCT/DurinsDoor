@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { encryptFile, hashPassword, humanSize, fileIcon } from '@/lib/crypto'
+import { encryptFile, humanSize, fileIcon } from '@/lib/crypto'
 import type { User } from '@supabase/supabase-js'
 
 type PageState =
@@ -233,8 +233,18 @@ export default function HomePage() {
       const expiryMs: Record<string, number> = { '1h': 3600000, '24h': 86400000, '7d': 604800000, '30d': 2592000000 }
       const expiresAt = expiry === 'never' ? null : new Date(Date.now() + expiryMs[expiry]).toISOString()
 
-      // Password hash
-      const pwHash = password ? await hashPassword(password) : null
+      // Password hash — computed server-side with bcrypt (cost 10) for CLI interop
+      let pwHash: string | null = null
+      if (password) {
+        const hashRes = await fetch('/api/hash-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        })
+        if (!hashRes.ok) throw new Error('Failed to hash password')
+        const { hash } = await hashRes.json()
+        pwHash = hash
+      }
 
       const { data: share, error: dbError } = await supabase
         .from('shares')

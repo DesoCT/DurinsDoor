@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { decryptFile, triggerDownload, hashPassword } from '@/lib/crypto'
+import { decryptFile, triggerDownload } from '@/lib/crypto'
 import type { Share } from '@/lib/types'
 import StarCanvas from '@/components/StarCanvas'
 
@@ -75,17 +75,15 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
       setDlState('verifying')
 
       try {
-        const pwHash = await hashPassword(password)
-
         setDlState('fetching')
         setProgress(20)
 
-        // Download through the server-side proxy which verifies the password
-        // and fetches the blob using the service role key
+        // Send plaintext password over HTTPS; server verifies with bcrypt.compare()
+        // which supports both web-uploaded and CLI-uploaded (Go bcrypt) shares.
         const res = await fetch('/api/download', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shareId: share.id, passwordHash: pwHash }),
+          body: JSON.stringify({ shareId: share.id, password }),
         })
 
         if (res.status === 401) {

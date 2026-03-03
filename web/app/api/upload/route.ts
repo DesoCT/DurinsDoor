@@ -3,14 +3,14 @@ import { requireApiAuth } from '@/lib/api-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { shareToApiJson } from '@/lib/api-mappers'
 import { randomUUID } from 'crypto'
+import bcrypt from 'bcryptjs'
 
 /**
- * Hash a password with SHA-256 → base64, matching the web client's hashPassword().
+ * Hash a password with bcrypt (cost 10), matching the Go CLI's bcrypt.DefaultCost.
+ * This ensures cross-platform interoperability between CLI and web uploads.
  */
 async function hashPassword(password: string): Promise<string> {
-  const enc = new TextEncoder()
-  const hash = await crypto.subtle.digest('SHA-256', enc.encode(password))
-  return Buffer.from(hash).toString('base64')
+  return bcrypt.hash(password, 10)
 }
 
 /**

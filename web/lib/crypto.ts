@@ -62,11 +62,18 @@ export async function decryptFileWithKey(cipherBlob: ArrayBuffer, key: CryptoKey
   return await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data)
 }
 
-/** Hash a password with SHA-256 for server-side verification. */
-export async function hashPassword(password: string): Promise<string> {
-  const enc = new TextEncoder()
-  const hash = await crypto.subtle.digest('SHA-256', enc.encode(password))
-  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+/**
+ * Returns the plaintext password unchanged.
+ *
+ * Previously this hashed with SHA-256 client-side, but bcrypt hashing must be
+ * done server-side (the server API routes use bcrypt.compare()). Passwords are
+ * sent as plaintext over HTTPS and hashed with bcrypt (cost 10) on the server,
+ * matching the Go CLI's bcrypt.DefaultCost for cross-platform interoperability.
+ *
+ * @deprecated Use the password value directly and let the server handle hashing.
+ */
+export function hashPassword(password: string): string {
+  return password
 }
 
 /** Trigger a browser file download from an ArrayBuffer. */

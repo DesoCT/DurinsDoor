@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import bcrypt from 'bcryptjs'
 
 /**
  * POST /api/download
  *
  * Proxies encrypted file downloads from Supabase Storage.
- * For password-protected shares, verifies the password hash before serving.
+ * For password-protected shares, verifies the password using bcrypt before serving.
  * This prevents bypassing password protection by downloading directly from
  * the public storage bucket.
  *
- * Body: { shareId: string, passwordHash?: string }
+ * Body: { shareId: string, password?: string }
  */
 export async function POST(req: NextRequest) {
   try {
-    const { shareId, passwordHash } = await req.json()
+    const { shareId, password } = await req.json()
 
     if (!shareId) {
       return NextResponse.json({ error: 'Missing shareId' }, { status: 400 })
@@ -44,10 +45,11 @@ export async function POST(req: NextRequest) {
 
     // Verify password if the share is password-protected
     if (share.password_hash) {
-      if (!passwordHash) {
+      if (!password) {
         return NextResponse.json({ error: 'Password required' }, { status: 401 })
       }
-      if (share.password_hash !== passwordHash) {
+      const passwordValid = await bcrypt.compare(password, share.password_hash)
+      if (!passwordValid) {
         return NextResponse.json({ error: 'Invalid password' }, { status: 401 })
       }
     }
