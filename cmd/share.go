@@ -74,9 +74,15 @@ func runShare(cmd *cobra.Command, args []string) error {
 	// Derive or generate encryption key
 	var key []byte
 	var keyHex string
+	var salt []byte
+	var saltHex string
 	if flagKey != "" {
-		key = crypto.DeriveKey(flagKey)
+		key, salt, err = crypto.DeriveKey(flagKey)
+		if err != nil {
+			return fmt.Errorf("derive key: %w", err)
+		}
 		keyHex = crypto.KeyToHex(key)
+		saltHex = crypto.KeyToHex(salt)
 	} else {
 		key, err = crypto.GenerateKey()
 		if err != nil {
@@ -100,7 +106,7 @@ func runShare(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("🔐 Encrypting %s...\n", filepath.Base(filePath))
-	if err := encryptFile(filePath, encPath, key); err != nil {
+	if err := encryptFile(filePath, encPath, key, salt); err != nil {
 		return fmt.Errorf("encrypt: %w", err)
 	}
 
@@ -123,6 +129,7 @@ func runShare(cmd *cobra.Command, args []string) error {
 		Filename:      filepath.Base(filePath),
 		EncryptedPath: encPath,
 		KeyHex:        keyHex,
+		SaltHex:       saltHex,
 		CreatedAt:     time.Now(),
 		ExpiresAt:     time.Now().Add(flagExpires),
 		MaxDownloads:  flagMaxDownloads,
@@ -246,7 +253,10 @@ func runShare(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func encryptFile(src, dst string, key []byte) error {
+// encryptFile encrypts src into dst using key. If salt is non-nil (passphrase-
+// derived key), the 16-byte salt is written as a header before the ciphertext
+// so that it can be recovered for future key re-derivation.
+func encryptFile(src, dst string, key, salt []byte) error {
 	in, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("open source: %w", err)
@@ -258,6 +268,14 @@ func encryptFile(src, dst string, key []byte) error {
 		return fmt.Errorf("open dest: %w", err)
 	}
 	defer out.Close()
+
+	// Prepend the Argon2id salt so a recipient with the passphrase can
+	// re-derive the key without needing out-of-band salt storage.
+	if len(salt) > 0 {
+		if _, err := out.Write(salt); err != nil {
+			return fmt.Errorf("write salt header: %w", err)
+		}
+	}
 
 	return crypto.EncryptStream(out, in, key)
 }

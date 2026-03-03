@@ -6,11 +6,12 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+
+	"golang.org/x/crypto/argon2"
 )
 
 const (
@@ -22,6 +23,14 @@ const (
 	ChunkSize = 64 * 1024 // 64KB chunks
 	// TagSize is the GCM authentication tag size
 	TagSize = 16
+	// SaltSize is the Argon2id salt size in bytes
+	SaltSize = 16
+
+	// Argon2id parameters
+	argonTime    = 1
+	argonMemory  = 64 * 1024
+	argonThreads = 4
+	argonKeyLen  = 32
 )
 
 // GenerateKey generates a cryptographically secure random 256-bit key.
@@ -50,11 +59,26 @@ func KeyFromHex(s string) ([]byte, error) {
 	return key, nil
 }
 
-// DeriveKey derives a 256-bit key from a passphrase using SHA-256.
-// For production use, consider argon2 or scrypt instead.
-func DeriveKey(passphrase string) []byte {
-	hash := sha256.Sum256([]byte(passphrase))
-	return hash[:]
+// DeriveKey derives a 256-bit key from a passphrase using Argon2id with a
+// freshly generated random 16-byte salt. Returns the derived key and the salt.
+// Parameters: time=1, memory=64MiB, threads=4, keyLen=32.
+func DeriveKey(passphrase string) (key, salt []byte, err error) {
+	salt = make([]byte, SaltSize)
+	if _, err = io.ReadFull(rand.Reader, salt); err != nil {
+		return nil, nil, fmt.Errorf("failed to generate salt: %w", err)
+	}
+	key = argon2.IDKey([]byte(passphrase), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	return key, salt, nil
+}
+
+// DeriveKeyWithSalt derives a 256-bit key from a passphrase and an existing
+// salt using Argon2id. Use this for decryption when the salt is known.
+func DeriveKeyWithSalt(passphrase string, salt []byte) ([]byte, error) {
+	if len(salt) != SaltSize {
+		return nil, fmt.Errorf("invalid salt length: got %d bytes, want %d", len(salt), SaltSize)
+	}
+	key := argon2.IDKey([]byte(passphrase), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	return key, nil
 }
 
 // Encryptor wraps an io.Writer and encrypts data as it is written.
