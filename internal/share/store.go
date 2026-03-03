@@ -24,17 +24,18 @@ var ErrExhausted = errors.New("share download limit reached")
 
 // Share represents a single file share entry.
 type Share struct {
-	ID           string
-	Filename     string    // original filename
-	EncryptedPath string   // path to encrypted file on disk
-	KeyHex       string    // AES-256 key as hex
-	CreatedAt    time.Time
-	ExpiresAt    time.Time
-	MaxDownloads int       // 0 = unlimited
-	Downloads    int
-	PasswordHash string    // bcrypt hash of password, empty = no password
-	AdminToken   string    // token for admin operations
-	Size         int64     // original file size in bytes
+	ID            string
+	Filename      string    // original filename
+	EncryptedPath string    // path to encrypted file on disk
+	KeyHex        string    // AES-256 key as hex
+	SaltHex       string    // Argon2id salt as hex (non-empty when key was passphrase-derived)
+	CreatedAt     time.Time
+	ExpiresAt     time.Time
+	MaxDownloads  int       // 0 = unlimited
+	Downloads     int
+	PasswordHash  string    // bcrypt hash of password, empty = no password
+	AdminToken    string    // token for admin operations
+	Size          int64     // original file size in bytes
 }
 
 // IsExpired returns true if the share has expired.
@@ -82,6 +83,8 @@ func NewStore(dataDir string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	// Best-effort: add salt_hex to existing databases that pre-date this column.
+	_, _ = db.Exec(`ALTER TABLE shares ADD COLUMN salt_hex TEXT NOT NULL DEFAULT ''`)
 	return s, nil
 }
 
@@ -92,6 +95,7 @@ func (s *Store) migrate() error {
 			filename      TEXT NOT NULL,
 			encrypted_path TEXT NOT NULL,
 			key_hex       TEXT NOT NULL,
+			salt_hex      TEXT NOT NULL DEFAULT '',
 			created_at    INTEGER NOT NULL,
 			expires_at    INTEGER NOT NULL,
 			max_downloads INTEGER NOT NULL DEFAULT 0,
@@ -120,13 +124,14 @@ func (s *Store) migrate() error {
 // Create inserts a new share record.
 func (s *Store) Create(ctx context.Context, share *Share) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO shares (id, filename, encrypted_path, key_hex, created_at, expires_at,
+		INSERT INTO shares (id, filename, encrypted_path, key_hex, salt_hex, created_at, expires_at,
 		                    max_downloads, downloads, password_hash, admin_token, size)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		share.ID,
 		share.Filename,
 		share.EncryptedPath,
 		share.KeyHex,
+		share.SaltHex,
 		share.CreatedAt.Unix(),
 		share.ExpiresAt.Unix(),
 		share.MaxDownloads,
@@ -144,7 +149,7 @@ func (s *Store) Create(ctx context.Context, share *Share) error {
 // Get retrieves a share by ID, validating expiry and download limits.
 func (s *Store) Get(ctx context.Context, id string) (*Share, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, filename, encrypted_path, key_hex, created_at, expires_at,
+		SELECT id, filename, encrypted_path, key_hex, salt_hex, created_at, expires_at,
 		       max_downloads, downloads, password_hash, admin_token, size
 		FROM shares WHERE id = ?`, id)
 	share, err := scanShare(row)
@@ -174,7 +179,7 @@ func (s *Store) IncrementDownloads(ctx context.Context, id string) error {
 // List returns all non-expired shares.
 func (s *Store) List(ctx context.Context) ([]*Share, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, filename, encrypted_path, key_hex, created_at, expires_at,
+		SELECT id, filename, encrypted_path, key_hex, salt_hex, created_at, expires_at,
 		       max_downloads, downloads, password_hash, admin_token, size
 		FROM shares
 		ORDER BY created_at DESC`)
@@ -265,7 +270,7 @@ func scanShare(row *sql.Row) (*Share, error) {
 	var s Share
 	var createdAt, expiresAt int64
 	err := row.Scan(
-		&s.ID, &s.Filename, &s.EncryptedPath, &s.KeyHex,
+		&s.ID, &s.Filename, &s.EncryptedPath, &s.KeyHex, &s.SaltHex,
 		&createdAt, &expiresAt,
 		&s.MaxDownloads, &s.Downloads,
 		&s.PasswordHash, &s.AdminToken, &s.Size,
@@ -282,7 +287,7 @@ func scanShareRow(rows *sql.Rows) (*Share, error) {
 	var s Share
 	var createdAt, expiresAt int64
 	err := rows.Scan(
-		&s.ID, &s.Filename, &s.EncryptedPath, &s.KeyHex,
+		&s.ID, &s.Filename, &s.EncryptedPath, &s.KeyHex, &s.SaltHex,
 		&createdAt, &expiresAt,
 		&s.MaxDownloads, &s.Downloads,
 		&s.PasswordHash, &s.AdminToken, &s.Size,

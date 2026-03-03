@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"mime"
 	"net/http"
@@ -204,6 +205,18 @@ func (s *Server) streamDecryptedFile(w http.ResponseWriter, r *http.Request, sh 
 		return
 	}
 	defer f.Close()
+
+	// If the file was encrypted with a passphrase-derived key, a 16-byte
+	// Argon2id salt was prepended. Skip it — the derived key is already
+	// stored in the share record.
+	if sh.SaltHex != "" {
+		saltBuf := make([]byte, crypto.SaltSize)
+		if _, err := io.ReadFull(f, saltBuf); err != nil {
+			log.Printf("failed to read salt header for %s: %v", sh.ID, err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
 
 	w.Header().Set("Content-Disposition", sanitizedContentDisposition(sh.Filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
