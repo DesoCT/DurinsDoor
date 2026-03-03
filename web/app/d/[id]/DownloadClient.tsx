@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+
 import { decryptFile, triggerDownload } from '@/lib/crypto'
 import type { Share } from '@/lib/types'
 import StarCanvas from '@/components/StarCanvas'
@@ -113,27 +113,29 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
       return
     }
 
-    // Non-password shares: download directly from Supabase Storage (public bucket)
+    // Non-password shares: also use server-side proxy for consistent
+    // download counting (increments atomically before serving the blob)
     setDlState('fetching')
     setProgress(20)
     try {
-      const supabase = createClient()
-      const { data: blobData, error: dlError } = await supabase.storage
-        .from('encrypted-files')
-        .download(share.storage_path)
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shareId: share.id }),
+      })
 
-      if (dlError || !blobData) throw dlError ?? new Error('Download failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Download failed' }))
+        throw new Error(data.error || 'Download failed')
+      }
 
       setProgress(60)
       setDlState('decrypting')
 
-      const buffer = await blobData.arrayBuffer()
+      const buffer = await res.arrayBuffer()
       const decrypted = await decryptFile(buffer, keyB64)
 
       setProgress(100)
-
-      // Increment download count atomically via RPC
-      await supabase.rpc('increment_download_count', { share_id: share.id })
 
       triggerDownload(decrypted, share.filename, share.content_type ?? 'application/octet-stream')
       setDlState('done')
