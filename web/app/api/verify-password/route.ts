@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import bcrypt from 'bcryptjs'
 
 export async function POST(req: NextRequest) {
   try {
-    const { shareId, passwordHash } = await req.json()
+    const { shareId, password } = await req.json()
 
-    if (!shareId || !passwordHash) {
+    if (!shareId || !password) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
     }
 
@@ -30,8 +31,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Download limit reached' }, { status: 410 })
     }
 
-    // Verify password hash (SHA-256 stored as base64)
-    if (share.password_hash !== passwordHash) {
+    // Verify password using bcrypt comparison
+    const passwordValid = await bcrypt.compare(password, share.password_hash)
+    if (!passwordValid) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 })
     }
 
