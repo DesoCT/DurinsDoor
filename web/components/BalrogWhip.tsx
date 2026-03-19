@@ -327,41 +327,74 @@ export default function BalrogWhip() {
     const points: { x: number; y: number }[] = []
     const jitter = jitterRef.current
 
+    // ── Traveling-loop whip model ──
+    // A single energy pulse travels root→tip, forming a loop that
+    // tightens and amplifies toward the tip (real whip physics).
+    // The wave front position: 0=root, 1=tip, >1=past tip (crack zone)
+    const waveFront = t * 1.6
+    // Per-attack direction: which side the loop bulges toward
+    const loopSign = Math.sign((jitter[0]?.dx ?? 0.1) + 0.001)
+
     for (let i = 0; i <= SEG; i++) {
-      const s = i / SEG
-      const chainLag = s * s * 0.45
-      const arrival = Math.min(t * 1.5 - chainLag, 1)
-      if (arrival <= 0) break
+      const s = i / SEG  // 0=root, 1=tip
 
-      const easedArrival = easeOutQuart(Math.min(arrival, 1))
-      let px = ox + dx * s * easedArrival
-      let py = oy + dy * s * easedArrival
+      // How "settled" this segment is — segments behind the wave are placed,
+      // segments at/ahead of the wave are still arriving
+      const settleRaw = (waveFront - s) * 2.5
+      if (settleRaw <= 0) break  // wave hasn't reached here yet
+      const settled = easeOutQuart(Math.min(settleRaw, 1))
 
-      const envelope = Math.sin(s * Math.PI) * Math.pow(s + 0.05, 0.4)
-      const energyLeft = Math.max(0, 1 - t * 1.1)
-      const waveProgress = Math.max(0, t * 3.5 - s * 2.0)
-      const baseAmp = envelope * energyLeft * 130 * Math.min(waveProgress, 1)
+      // Base position along origin→target
+      let px = ox + dx * s * settled
+      let py = oy + dy * s * settled
 
       const j = jitter[i] ?? { dx: 0, dy: 0 }
-      const w1 = Math.sin(s * Math.PI * 3.7 - t * 14 + j.dx * 1.2)
-      const w2 = Math.sin(s * Math.PI * 6.1 - t * 23 + j.dy * 0.9) * 0.45
-      const w3 = Math.sin(s * Math.PI * 1.9 - t * 8.5 + (j.dx - j.dy) * 0.7) * 0.3
-      const displacement = (w1 + w2 + w3) * baseAmp
-      px += perpX * displacement
-      py += perpY * displacement
 
-      const tipFrac = Math.max(0, (s - 0.82) / 0.18)
-      if (tipFrac > 0) {
-        const snapT = Math.max(0, Math.min((t - 0.55) / 0.27, 1))
-        const snapEnvelope = snapT * (1 - snapT) * 4
-        const snapMag = tipFrac * snapEnvelope * 70 * (1 + Math.abs(j.dx))
-        const snapDir = Math.sign(j.dx + 0.001)
-        px += perpX * snapMag * snapDir
-        py += perpY * snapMag * snapDir
-        const flick = tipFrac * snapEnvelope * 35 * Math.abs(j.dy)
-        px -= (dx / len) * flick
-        py -= (dy / len) * flick
+      // ── THE TRAVELING LOOP ──
+      // Gaussian bump centered on the wave front
+      const distFromFront = s - waveFront
+      // Loop tightens toward the tip (energy concentration)
+      const loopWidth = 0.14 * (1 - s * 0.55)
+      const loopGauss = Math.exp(-(distFromFront * distFromFront) / (2 * loopWidth * loopWidth))
+      // Amplitude increases toward tip — tapered whip concentrates energy
+      const loopAmp = loopGauss * (60 + s * 140) * Math.min(t * 3, 1)
+      px += perpX * loopAmp * loopSign
+      py += perpY * loopAmp * loopSign
+
+      // ── FOLLOW-THROUGH ARC ──
+      // Behind the wave, the whip settles into a gentle curve
+      // (the natural sag from the casting motion)
+      const behindWave = Math.max(0, waveFront - s - 0.15)
+      if (behindWave > 0) {
+        const arcShape = Math.sin(s * Math.PI) // peaks at midpoint
+        const arcDecay = Math.max(0, 1 - t * 1.4) // fades as whip extends
+        const arc = arcShape * arcDecay * 40 * loopSign
+        px += perpX * arc
+        py += perpY * arc
       }
+
+      // ── ORGANIC JITTER ──
+      // Subtle per-segment noise for organic feel (not the main motion)
+      const noiseAmp = 4 * Math.min(settled, 1 - settled + 0.2)
+      px += perpX * j.dx * noiseAmp
+      py += perpY * j.dy * noiseAmp
+
+      // ── TIP CRACK ──
+      // When the wave front passes the tip, violent snap to the opposite side
+      if (s > 0.8 && waveFront > 0.85) {
+        const tipFrac = (s - 0.8) / 0.2
+        const crackProgress = Math.max(0, (waveFront - 0.85) / 0.5)
+        // Sharp rise then exponential decay — the snap
+        const crackEnvelope = crackProgress * Math.exp(-crackProgress * 1.8) * 4
+        const crackMag = tipFrac * tipFrac * crackEnvelope * 180
+        // Snaps to OPPOSITE side of the loop + curls backward
+        px += perpX * crackMag * -loopSign
+        py += perpY * crackMag * -loopSign
+        const curlBack = tipFrac * crackEnvelope * 60
+        px -= (dx / len) * curlBack
+        py -= (dy / len) * curlBack
+      }
+
       points.push({ x: px, y: py })
     }
 
