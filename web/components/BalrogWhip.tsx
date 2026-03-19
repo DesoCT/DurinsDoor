@@ -1,17 +1,23 @@
 'use client'
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
+import gsap from 'gsap'
+import { useGSAP } from '@gsap/react'
+
+gsap.registerPlugin(useGSAP)
 
 /* ── Timing constants ── */
-const IDLE_BEFORE_PROMPT = 8000  // 8s idle before showing the prompt
-const FIRST_ATTACK_DELAY = 3000  // 3s after game starts before first whip
-const MIN_ATTACK_MS = 2500       // min gap between attacks
-const MAX_ATTACK_MS = 5000       // max gap
-const WHIP_DURATION = 750        // ms for whip to reach target (slower, more readable)
-const RETRACT_MS = 500           // ms for whip to retract
-const CATCH_RADIUS = 45          // px — how close cursor must be to get caught
-const CAUGHT_DURATION = 10000    // 10s for the full Balrog caught sequence (slower)
+const IDLE_BEFORE_PROMPT = 8000
+const FIRST_ATTACK_DELAY = 3000
+const MIN_ATTACK_MS = 2500
+const MAX_ATTACK_MS = 5000
+const WHIP_DURATION = 750
+const RETRACT_MS = 500
+const CATCH_RADIUS = 45
 const COOLDOWN_AFTER_CATCH = 8000
+
+/* ── Easing ── */
+const easeOutQuart = gsap.parseEase('power4.out')
 
 /* ── Types ── */
 interface Spark {
@@ -27,135 +33,35 @@ interface FallingRock {
 
 type WhipPhase = 'idle' | 'extending' | 'retracting'
 
-/**
- * Balrog whip dodge mini-game.
- *
- * Shows a prompt after idle. Press Space to start. Dodge the fiery whip
- * by moving your mouse. If caught → Balrog cinematic in the Mines of Moria.
- */
 export default function BalrogWhip() {
   const [gameState, setGameState] = useState<GameState>('off')
   const [dodges, setDodges] = useState(0)
-  const [score, setScore] = useState(0)
+  const [, setScore] = useState(0)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
   const mouseRef = useRef({ x: -1, y: -1 })
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const rafRef = useRef<number>(0)
   const whipPhaseRef = useRef<WhipPhase>('idle')
-  const startTimeRef = useRef(0)
   const targetRef = useRef({ x: 0, y: 0 })
   const sparksRef = useRef<Spark[]>([])
-  const caughtTimeRef = useRef(0)
   const rocksRef = useRef<FallingRock[]>([])
   const dodgeCountRef = useRef(0)
   const gameStateRef = useRef<GameState>('off')
   const scoreRef = useRef(0)
-  // New: randomised origin per attack + baked per-segment jitter
   const originRef = useRef({ x: -30, y: 0 })
   const jitterRef = useRef<{ dx: number; dy: number }[]>([])
 
-  // Keep ref in sync with state
+  // GSAP proxy objects
+  const whipProgress = useRef({ t: 0 })
+  const whipTweenRef = useRef<gsap.core.Tween | null>(null)
+  const caughtProgress = useRef({ t: 0 })
+  const caughtTimelineRef = useRef<gsap.core.Timeline | null>(null)
+
   useEffect(() => { gameStateRef.current = gameState }, [gameState])
 
-  /* ── Schedule next whip attack ── */
-  const scheduleAttack = useCallback((delay?: number) => {
-    if (timerRef.current) clearTimeout(timerRef.current)
-    const speedUp = Math.max(0.5, 1 - dodgeCountRef.current * 0.06)
-    const ms = delay ?? (MIN_ATTACK_MS + Math.random() * (MAX_ATTACK_MS - MIN_ATTACK_MS)) * speedUp
-    timerRef.current = setTimeout(() => {
-      if (gameStateRef.current !== 'playing') return
-      if (mouseRef.current.x < 0) { scheduleAttack(1000); return }
-      if (whipPhaseRef.current !== 'idle') return
-
-      // ── Pick a random bottom-half edge for the whip origin ──
-      const canvas = canvasRef.current
-      const W = canvas ? canvas.width : window.innerWidth
-      const H = canvas ? canvas.height : window.innerHeight
-      const edge = Math.floor(Math.random() * 3) // 0=bottom, 1=left, 2=right
-      let ox: number, oy: number
-      if (edge === 0) {
-        // Bottom edge — any x position
-        ox = Math.random() * W
-        oy = H + 30
-      } else if (edge === 1) {
-        // Left edge — any y in the bottom half
-        ox = -30
-        oy = H / 2 + Math.random() * (H / 2)
-      } else {
-        // Right edge — any y in the bottom half
-        ox = W + 30
-        oy = H / 2 + Math.random() * (H / 2)
-      }
-      originRef.current = { x: ox, y: oy }
-
-      // ── Bake per-segment random jitter (used by draw) ──
-      const SEG = 60
-      const baked: { dx: number; dy: number }[] = []
-      for (let i = 0; i <= SEG; i++) {
-        baked.push({
-          dx: (Math.random() - 0.5) * 2,   // −1 … +1
-          dy: (Math.random() - 0.5) * 2,
-        })
-      }
-      jitterRef.current = baked
-
-      whipPhaseRef.current = 'extending'
-      startTimeRef.current = performance.now()
-      targetRef.current = { ...mouseRef.current }
-      sparksRef.current = []
-      draw()
-    }, ms)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  /* ── Start game ── */
-  const startGame = useCallback(() => {
-    setGameState('playing')
-    setDodges(0)
-    setScore(0)
-    dodgeCountRef.current = 0
-    scoreRef.current = 0
-    whipPhaseRef.current = 'idle'
-    sparksRef.current = []
-    scheduleAttack(FIRST_ATTACK_DELAY)
-  }, [scheduleAttack])
-
-  /* ── End game (caught) ── */
-  function triggerCaught() {
-    setGameState('caught')
-    caughtTimeRef.current = performance.now()
-    rocksRef.current = []
-    const finalScore = scoreRef.current
-    setScore(finalScore)
-
-    const ol = overlayRef.current
-    if (ol) {
-      ol.style.display = 'flex'
-      ol.style.opacity = '0'
-    }
-  }
-
-  /* ── Stop game ── */
-  const stopGame = useCallback(() => {
-    setGameState('off')
-    whipPhaseRef.current = 'idle'
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    sparksRef.current = []
-    const canvas = canvasRef.current
-    if (canvas) {
-      const ctx = canvas.getContext('2d')
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
-    }
-    // Restart idle detection
-    resetIdleDetection()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  /* ── Idle detection for showing prompt ── */
+  /* ── Idle detection ── */
   const resetIdleDetection = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
     if (gameStateRef.current !== 'off') return
@@ -169,27 +75,223 @@ export default function BalrogWhip() {
   /* ── Mouse tracking ── */
   const handleMove = useCallback((x: number, y: number) => {
     mouseRef.current = { x, y }
-    if (gameStateRef.current === 'off') {
-      resetIdleDetection()
-    }
+    if (gameStateRef.current === 'off') resetIdleDetection()
   }, [resetIdleDetection])
 
-  /* ── Main draw loop ── */
-  function draw() {
+  /* ── Spark helpers ── */
+  function drawSparks(ctx: CanvasRenderingContext2D) {
+    const sparks = sparksRef.current
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i]
+      s.x += s.vx; s.y += s.vy; s.vy += 0.08; s.vx *= 0.98; s.life++
+      const alpha = Math.max(0, 1 - s.life / s.maxLife)
+      if (alpha <= 0) { sparks.splice(i, 1); continue }
+      ctx.save()
+      ctx.globalAlpha = alpha
+      ctx.fillStyle = s.bright
+        ? `rgba(255, 255, 180, ${alpha})`
+        : `rgba(255, ${80 + Math.floor(80 * alpha)}, 0, ${alpha})`
+      ctx.shadowColor = 'rgba(255, 80, 0, 0.5)'
+      ctx.shadowBlur = 4
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, s.size * alpha, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+  }
+
+  function spawnImpactSparks(x: number, y: number, count: number) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 3 + Math.random() * 8
+      sparksRef.current.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 3,
+        life: 1, maxLife: 30 + Math.random() * 40,
+        size: 2 + Math.random() * 4,
+        bright: Math.random() < 0.5,
+      })
+    }
+  }
+
+  /* ── Schedule next whip attack ── */
+  const scheduleAttack = useCallback((delay?: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    const speedUp = Math.max(0.5, 1 - dodgeCountRef.current * 0.06)
+    const ms = delay ?? (MIN_ATTACK_MS + Math.random() * (MAX_ATTACK_MS - MIN_ATTACK_MS)) * speedUp
+    timerRef.current = setTimeout(() => {
+      if (gameStateRef.current !== 'playing') return
+      if (mouseRef.current.x < 0) { scheduleAttack(1000); return }
+      if (whipPhaseRef.current !== 'idle') return
+
+      const canvas = canvasRef.current
+      const W = canvas ? canvas.width : window.innerWidth
+      const H = canvas ? canvas.height : window.innerHeight
+      const edge = Math.floor(Math.random() * 3)
+      let ox: number, oy: number
+      if (edge === 0) {
+        ox = Math.random() * W; oy = H + 30
+      } else if (edge === 1) {
+        ox = -30; oy = H / 2 + Math.random() * (H / 2)
+      } else {
+        ox = W + 30; oy = H / 2 + Math.random() * (H / 2)
+      }
+      originRef.current = { x: ox, y: oy }
+
+      const SEG = 60
+      const baked: { dx: number; dy: number }[] = []
+      for (let i = 0; i <= SEG; i++) {
+        baked.push({ dx: (Math.random() - 0.5) * 2, dy: (Math.random() - 0.5) * 2 })
+      }
+      jitterRef.current = baked
+
+      whipPhaseRef.current = 'extending'
+      whipProgress.current.t = 0
+      targetRef.current = { ...mouseRef.current }
+      sparksRef.current = []
+
+      whipTweenRef.current = gsap.fromTo(whipProgress.current,
+        { t: 0 },
+        {
+          t: 1,
+          duration: WHIP_DURATION / 1000,
+          ease: 'none',
+          onComplete: () => {
+            const mx = targetRef.current.x
+            const my = targetRef.current.y
+            const curX = mouseRef.current.x
+            const curY = mouseRef.current.y
+            const dist = Math.sqrt((curX - mx) ** 2 + (curY - my) ** 2)
+            if (dist < CATCH_RADIUS) {
+              spawnImpactSparks(mx, my, 40)
+              triggerCaught()
+              return
+            }
+            whipPhaseRef.current = 'retracting'
+            dodgeCountRef.current++
+            scoreRef.current = dodgeCountRef.current
+            setDodges(dodgeCountRef.current)
+            setScore(dodgeCountRef.current)
+            gsap.to(whipProgress.current, {
+              t: 0,
+              duration: RETRACT_MS / 1000,
+              ease: 'power2.in',
+              onComplete: () => {
+                whipPhaseRef.current = 'idle'
+                scheduleAttack()
+              },
+            })
+          },
+        }
+      )
+    }, ms)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /* ── Trigger caught sequence ── */
+  function triggerCaught() {
+    whipTweenRef.current?.kill()
+    setGameState('caught')
+    rocksRef.current = []
+    const finalScore = scoreRef.current
+    setScore(finalScore)
+
+    const ol = overlayRef.current
+    if (ol) { ol.style.display = 'flex'; ol.style.opacity = '0' }
+
+    caughtProgress.current.t = 0
+    const tl = gsap.timeline({
+      onComplete: () => endCaught(),
+      onUpdate: () => {
+        const t = caughtProgress.current.t
+        const ol2 = overlayRef.current
+        if (!ol2) return
+        if (t < 0.03) ol2.style.opacity = String(t / 0.03)
+        else if (t < 0.82) ol2.style.opacity = '1'
+        else ol2.style.opacity = String(Math.max(0, 1 - (t - 0.82) / 0.18))
+
+        if (t < 0.30) ol2.innerHTML = createBalrogRising(t / 0.30)
+        else if (t < 0.50) ol2.innerHTML = createYouShallNotPass((t - 0.30) / 0.20)
+        else if (t < 0.82) ol2.innerHTML = createFalling((t - 0.50) / 0.32)
+        else ol2.innerHTML = createFadeOut((t - 0.82) / 0.18, scoreRef.current)
+      },
+    })
+    caughtTimelineRef.current = tl
+
+    tl.to(caughtProgress.current, { t: 0.06, duration: 0.6, ease: 'none' }, 'flash')
+    tl.to(caughtProgress.current, { t: 0.30, duration: 2.4, ease: 'none' }, '>')
+    tl.to(caughtProgress.current, { t: 0.50, duration: 2.0, ease: 'none' }, '>')
+    tl.to(caughtProgress.current, { t: 0.82, duration: 3.2, ease: 'none' }, '>')
+    tl.to(caughtProgress.current, { t: 1.0, duration: 1.8, ease: 'none' }, '>')
+  }
+
+  function endCaught() {
+    document.body.style.transform = ''
+    const ol = overlayRef.current
+    if (ol) { ol.style.display = 'none'; ol.innerHTML = '' }
+    const canvas = canvasRef.current
+    if (canvas) {
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+    }
+    sparksRef.current = []
+    rocksRef.current = []
+    setGameState('cooldown')
+    setTimeout(() => {
+      setGameState('off')
+      dodgeCountRef.current = 0
+      whipPhaseRef.current = 'idle'
+      resetIdleDetection()
+    }, COOLDOWN_AFTER_CATCH)
+  }
+
+  /* ── Start game ── */
+  function startGame() {
+    setGameState('playing')
+    setDodges(0)
+    setScore(0)
+    dodgeCountRef.current = 0
+    scoreRef.current = 0
+    whipPhaseRef.current = 'idle'
+    sparksRef.current = []
+    scheduleAttack(FIRST_ATTACK_DELAY)
+  }
+
+  /* ── Stop game ── */
+  function stopGame() {
+    setGameState('off')
+    whipPhaseRef.current = 'idle'
+    whipTweenRef.current?.kill()
+    caughtTimelineRef.current?.kill()
+    if (timerRef.current) clearTimeout(timerRef.current)
+    document.body.style.transform = ''
+    sparksRef.current = []
+    const ol = overlayRef.current
+    if (ol) { ol.style.display = 'none'; ol.innerHTML = '' }
+    const canvas = canvasRef.current
+    if (canvas) {
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+    }
+    resetIdleDetection()
+  }
+
+  /* ── Ticker draw (replaces requestAnimationFrame) ── */
+  function tickerDraw() {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    const state = gameStateRef.current
+    if (state !== 'playing' && state !== 'caught') return
 
     const W = canvas.width
     const H = canvas.height
     const now = performance.now()
-    const elapsed = now - startTimeRef.current
-
     ctx.clearRect(0, 0, W, H)
 
-    // Draw dodge score during gameplay
-    if (gameStateRef.current === 'playing' || gameStateRef.current === 'caught') {
+    if (state === 'playing' || state === 'caught') {
       ctx.save()
       ctx.font = '13px Cinzel, serif'
       ctx.fillStyle = 'rgba(200, 160, 100, 0.5)'
@@ -198,55 +300,23 @@ export default function BalrogWhip() {
       ctx.restore()
     }
 
-    if (gameStateRef.current === 'caught') {
-      drawCaughtSequence(ctx, W, H, now)
-      rafRef.current = requestAnimationFrame(draw)
+    if (state === 'caught') {
+      drawCaughtCanvas(ctx, W, H, now)
       return
     }
 
-    if (gameStateRef.current !== 'playing') return
     if (whipPhaseRef.current === 'idle') return
+    drawWhip(ctx, W, H, now)
+  }
 
+  /* ── Draw whip on canvas ── */
+  function drawWhip(ctx: CanvasRenderingContext2D, W: number, H: number, now: number) {
+    const t = whipProgress.current.t
     const mx = targetRef.current.x
     const my = targetRef.current.y
-
-    // Use the stored randomised origin for this attack
     const ox = originRef.current.x
     const oy = originRef.current.y
 
-    let t = 0
-
-    if (whipPhaseRef.current === 'extending') {
-      t = Math.min(elapsed / WHIP_DURATION, 1)
-      if (t >= 1) {
-        const curX = mouseRef.current.x
-        const curY = mouseRef.current.y
-        const dist = Math.sqrt((curX - mx) ** 2 + (curY - my) ** 2)
-        if (dist < CATCH_RADIUS) {
-          spawnImpactSparks(mx, my, 40)
-          triggerCaught()
-          rafRef.current = requestAnimationFrame(draw)
-          return
-        }
-        // Missed — retract
-        whipPhaseRef.current = 'retracting'
-        startTimeRef.current = now
-        dodgeCountRef.current++
-        scoreRef.current = dodgeCountRef.current
-        setDodges(dodgeCountRef.current)
-        setScore(dodgeCountRef.current)
-      }
-    } else if (whipPhaseRef.current === 'retracting') {
-      t = 1 - Math.min(elapsed / RETRACT_MS, 1)
-      if (t <= 0) {
-        whipPhaseRef.current = 'idle'
-        ctx.clearRect(0, 0, W, H)
-        scheduleAttack()
-        return
-      }
-    }
-
-    // ── Erratic chain-physics whip shape ──
     const dx = mx - ox
     const dy = my - oy
     const len = Math.sqrt(dx * dx + dy * dy) || 1
@@ -258,70 +328,48 @@ export default function BalrogWhip() {
     const jitter = jitterRef.current
 
     for (let i = 0; i <= SEG; i++) {
-      const s = i / SEG  // 0 = root, 1 = tip
-
-      // Chain-like propagation: each segment receives the crack wave
-      // with a delay that is non-linear — the crack front travels faster
-      // near the root, slower toward the tip, then the tip snaps hard.
-      // arrival: 0→not yet reached, 1→fully arrived
-      const chainLag = s * s * 0.45           // quadratic lag toward tip
+      const s = i / SEG
+      const chainLag = s * s * 0.45
       const arrival = Math.min(t * 1.5 - chainLag, 1)
       if (arrival <= 0) break
 
       const easedArrival = easeOutQuart(Math.min(arrival, 1))
-
-      // Base position along the line root→target
       let px = ox + dx * s * easedArrival
       let py = oy + dy * s * easedArrival
 
-      // ── Erratic multi-frequency wave ──
-      // Amplitude builds toward the tip and collapses as t→1 (snap spent)
       const envelope = Math.sin(s * Math.PI) * Math.pow(s + 0.05, 0.4)
       const energyLeft = Math.max(0, 1 - t * 1.1)
       const waveProgress = Math.max(0, t * 3.5 - s * 2.0)
       const baseAmp = envelope * energyLeft * 130 * Math.min(waveProgress, 1)
 
-      // Three overlapping waves at inharmonic frequencies → erratic look
       const j = jitter[i] ?? { dx: 0, dy: 0 }
       const w1 = Math.sin(s * Math.PI * 3.7 - t * 14 + j.dx * 1.2)
       const w2 = Math.sin(s * Math.PI * 6.1 - t * 23 + j.dy * 0.9) * 0.45
       const w3 = Math.sin(s * Math.PI * 1.9 - t * 8.5 + (j.dx - j.dy) * 0.7) * 0.3
       const displacement = (w1 + w2 + w3) * baseAmp
-
       px += perpX * displacement
       py += perpY * displacement
 
-      // ── Tip snap (last 18 % of segments) ──
-      // A sharp, sudden kick perpendicular + along the whip — like the crack
-      // of a real whip, arrives between t=0.55 and t=0.82
       const tipFrac = Math.max(0, (s - 0.82) / 0.18)
       if (tipFrac > 0) {
         const snapT = Math.max(0, Math.min((t - 0.55) / 0.27, 1))
-        const snapEnvelope = snapT * (1 - snapT) * 4   // peaks at snapT=0.5
+        const snapEnvelope = snapT * (1 - snapT) * 4
         const snapMag = tipFrac * snapEnvelope * 70 * (1 + Math.abs(j.dx))
-        // Direction: perpendicular kick + signed jitter gives each crack a
-        // slightly different character
-        const snapDir = Math.sign(j.dx + 0.001)   // ±1 per attack
+        const snapDir = Math.sign(j.dx + 0.001)
         px += perpX * snapMag * snapDir
         py += perpY * snapMag * snapDir
-        // A secondary backward flick — gives the "crack" hook shape
         const flick = tipFrac * snapEnvelope * 35 * Math.abs(j.dy)
         px -= (dx / len) * flick
         py -= (dy / len) * flick
       }
-
       points.push({ x: px, y: py })
     }
 
-    if (points.length < 2) {
-      rafRef.current = requestAnimationFrame(draw)
-      return
-    }
+    if (points.length < 2) return
 
     const flicker = 0.75 + 0.25 * Math.sin(now * 0.025) * Math.cos(now * 0.017)
     const rage = 0.8 + 0.2 * Math.sin(now * 0.04)
 
-    // Draw whip layers
     const layers = [
       { width: 26, color: 'rgba(160, 15, 0, 0.06)', blur: 28 },
       { width: 16, color: 'rgba(255, 35, 0, 0.12)', blur: 16 },
@@ -352,7 +400,6 @@ export default function BalrogWhip() {
       ctx.restore()
     }
 
-    // Secondary tendril
     if (points.length > 4) {
       const tendrilLayers = [
         { width: 10, color: 'rgba(200, 25, 0, 0.06)', blur: 14 },
@@ -375,9 +422,7 @@ export default function BalrogWhip() {
           const xc = (points[i].x + points[i + 1].x) / 2 + perpX * wobble
           const yc = (points[i].y + points[i + 1].y) / 2 + perpY * wobble
           ctx.quadraticCurveTo(
-            points[i].x + perpX * wobble,
-            points[i].y + perpY * wobble,
-            xc, yc
+            points[i].x + perpX * wobble, points[i].y + perpY * wobble, xc, yc
           )
         }
         ctx.stroke()
@@ -385,7 +430,6 @@ export default function BalrogWhip() {
       }
     }
 
-    // Embers along whip
     if (t > 0.15) {
       const count = Math.floor(14 * t)
       for (let i = 0; i < count; i++) {
@@ -407,40 +451,24 @@ export default function BalrogWhip() {
       }
     }
 
-    // Spark emission
     if (t > 0.3 && Math.random() < 0.7) {
       const idx = Math.floor(Math.random() * points.length)
       const p = points[idx]
       sparksRef.current.push({
         x: p.x, y: p.y,
-        vx: (Math.random() - 0.5) * 5,
-        vy: -Math.random() * 4 - 1,
+        vx: (Math.random() - 0.5) * 5, vy: -Math.random() * 4 - 1,
         life: 1, maxLife: 25 + Math.random() * 30,
-        size: 1 + Math.random() * 2.5,
-        bright: Math.random() < 0.3,
+        size: 1 + Math.random() * 2.5, bright: Math.random() < 0.3,
       })
     }
 
     drawSparks(ctx)
-
-    rafRef.current = requestAnimationFrame(draw)
   }
 
-  /* ── Caught animation ── */
-  function drawCaughtSequence(ctx: CanvasRenderingContext2D, W: number, H: number, now: number) {
-    const elapsed = now - caughtTimeRef.current
-    const t = elapsed / CAUGHT_DURATION
+  /* ── Caught canvas effects (fire, rocks, shake, flash) ── */
+  function drawCaughtCanvas(ctx: CanvasRenderingContext2D, W: number, H: number, now: number) {
+    const t = caughtProgress.current.t
 
-    const ol = overlayRef.current
-
-    // Phase breakdown (slower, more cinematic):
-    // 0.00–0.06: Flash
-    // 0.06–0.30: Balrog rises
-    // 0.30–0.50: "YOU SHALL NOT PASS"
-    // 0.50–0.82: Falling
-    // 0.82–1.00: Fade out + score
-
-    // Screen shake
     const shakeIntensity = t < 0.4 ? 12 * (1 - t * 2.5) : t < 0.82 ? 6 * Math.sin(now * 0.04) : 0
     if (shakeIntensity > 0) {
       document.body.style.transform = `translate(${(Math.random() - 0.5) * shakeIntensity}px, ${(Math.random() - 0.5) * shakeIntensity}px)`
@@ -448,7 +476,6 @@ export default function BalrogWhip() {
       document.body.style.transform = ''
     }
 
-    // Flash
     if (t < 0.06) {
       const flashAlpha = 1 - t / 0.06
       ctx.save()
@@ -457,44 +484,31 @@ export default function BalrogWhip() {
       ctx.restore()
     }
 
-    // Fire particles
     if (t < 0.82) {
       for (let i = 0; i < 2; i++) {
         sparksRef.current.push({
-          x: Math.random() * W,
-          y: H + 10,
-          vx: (Math.random() - 0.5) * 3,
-          vy: -3 - Math.random() * 6,
-          life: 1,
-          maxLife: 50 + Math.random() * 50,
-          size: 3 + Math.random() * 5,
-          bright: Math.random() < 0.4,
+          x: Math.random() * W, y: H + 10,
+          vx: (Math.random() - 0.5) * 3, vy: -3 - Math.random() * 6,
+          life: 1, maxLife: 50 + Math.random() * 50,
+          size: 3 + Math.random() * 5, bright: Math.random() < 0.4,
         })
       }
     }
 
-    // Falling rocks
     if (t > 0.45 && t < 0.82) {
       if (Math.random() < 0.25) {
         rocksRef.current.push({
-          x: Math.random() * W,
-          y: -20,
-          vy: 1.5 + Math.random() * 3,
-          size: 5 + Math.random() * 20,
-          rot: Math.random() * Math.PI * 2,
-          rotSpeed: (Math.random() - 0.5) * 0.08,
+          x: Math.random() * W, y: -20,
+          vy: 1.5 + Math.random() * 3, size: 5 + Math.random() * 20,
+          rot: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 0.08,
         })
       }
     }
 
-    // Draw rocks
     for (let i = rocksRef.current.length - 1; i >= 0; i--) {
       const r = rocksRef.current[i]
-      r.y += r.vy
-      r.vy += 0.12
-      r.rot += r.rotSpeed
+      r.y += r.vy; r.vy += 0.12; r.rot += r.rotSpeed
       if (r.y > H + 50) { rocksRef.current.splice(i, 1); continue }
-
       ctx.save()
       ctx.translate(r.x, r.y)
       ctx.rotate(r.rot)
@@ -516,88 +530,10 @@ export default function BalrogWhip() {
     }
 
     drawSparks(ctx)
-
-    // Overlay content
-    if (ol) {
-      if (t < 0.03) {
-        ol.style.opacity = String(t / 0.03)
-      } else if (t < 0.82) {
-        ol.style.opacity = '1'
-      } else {
-        ol.style.opacity = String(Math.max(0, 1 - (t - 0.82) / 0.18))
-      }
-
-      if (t < 0.30) {
-        ol.innerHTML = createBalrogRising(t / 0.30)
-      } else if (t < 0.50) {
-        ol.innerHTML = createYouShallNotPass((t - 0.30) / 0.20)
-      } else if (t < 0.82) {
-        ol.innerHTML = createFalling((t - 0.50) / 0.32)
-      } else {
-        ol.innerHTML = createFadeOut((t - 0.82) / 0.18, scoreRef.current)
-      }
-    }
-
-    // End
-    if (t >= 1) {
-      document.body.style.transform = ''
-      if (ol) { ol.style.display = 'none'; ol.innerHTML = '' }
-      ctx.clearRect(0, 0, W, H)
-      sparksRef.current = []
-      rocksRef.current = []
-      setGameState('cooldown')
-      setTimeout(() => {
-        setGameState('off')
-        dodgeCountRef.current = 0
-        whipPhaseRef.current = 'idle'
-        resetIdleDetection()
-      }, COOLDOWN_AFTER_CATCH)
-    }
   }
 
-  function drawSparks(ctx: CanvasRenderingContext2D) {
-    const sparks = sparksRef.current
-    for (let i = sparks.length - 1; i >= 0; i--) {
-      const s = sparks[i]
-      s.x += s.vx
-      s.y += s.vy
-      s.vy += 0.08
-      s.vx *= 0.98
-      s.life++
-      const alpha = Math.max(0, 1 - s.life / s.maxLife)
-      if (alpha <= 0) { sparks.splice(i, 1); continue }
-
-      ctx.save()
-      ctx.globalAlpha = alpha
-      ctx.fillStyle = s.bright
-        ? `rgba(255, 255, 180, ${alpha})`
-        : `rgba(255, ${80 + Math.floor(80 * alpha)}, 0, ${alpha})`
-      ctx.shadowColor = 'rgba(255, 80, 0, 0.5)'
-      ctx.shadowBlur = 4
-      ctx.beginPath()
-      ctx.arc(s.x, s.y, s.size * alpha, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-    }
-  }
-
-  function spawnImpactSparks(x: number, y: number, count: number) {
-    for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2
-      const speed = 3 + Math.random() * 8
-      sparksRef.current.push({
-        x, y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 3,
-        life: 1, maxLife: 30 + Math.random() * 40,
-        size: 2 + Math.random() * 4,
-        bright: Math.random() < 0.5,
-      })
-    }
-  }
-
-  /* ── Setup ── */
-  useEffect(() => {
+  /* ── useGSAP: setup ticker, events, cleanup ── */
+  useGSAP(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
@@ -614,20 +550,15 @@ export default function BalrogWhip() {
     }
 
     function onKeyDown(e: KeyboardEvent) {
-      // Don't capture space when user is typing in an input
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
-
       if (e.code === 'Space') {
         e.preventDefault()
-        if (gameStateRef.current === 'prompt') {
-          startGame()
-        }
+        if (gameStateRef.current === 'prompt') startGame()
       }
       if (e.code === 'Escape') {
-        if (gameStateRef.current === 'playing') {
-          stopGame()
-        } else if (gameStateRef.current === 'prompt') {
+        if (gameStateRef.current === 'playing') stopGame()
+        else if (gameStateRef.current === 'prompt') {
           setGameState('off')
           resetIdleDetection()
         }
@@ -640,27 +571,27 @@ export default function BalrogWhip() {
     window.addEventListener('touchmove', onTouchMove, { passive: true })
     window.addEventListener('keydown', onKeyDown)
 
-    // Start idle detection
+    gsap.ticker.add(tickerDraw)
     resetIdleDetection()
 
     return () => {
+      gsap.ticker.remove(tickerDraw)
       window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('touchmove', onTouchMove)
       window.removeEventListener('keydown', onKeyDown)
       if (timerRef.current) clearTimeout(timerRef.current)
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      whipTweenRef.current?.kill()
+      caughtTimelineRef.current?.kill()
       document.body.style.transform = ''
     }
-  }, [handleMove, startGame, stopGame, resetIdleDetection])
+  }, { scope: canvasRef })
 
   return (
     <>
       <canvas ref={canvasRef} className="balrog-whip-canvas" aria-hidden="true" />
       <div ref={overlayRef} className="balrog-caught-overlay" aria-hidden="true" />
-
-      {/* Prompt overlay */}
       {gameState === 'prompt' && (
         <div className="whip-prompt-overlay" onClick={() => setGameState('off')}>
           <div className="whip-prompt-card" onClick={e => e.stopPropagation()}>
@@ -684,7 +615,7 @@ export default function BalrogWhip() {
                 <span>If it catches you… you fall into shadow</span>
               </div>
             </div>
-            <button className="whip-prompt-btn" onClick={startGame}>
+            <button className="whip-prompt-btn" onClick={() => startGame()}>
               <span className="whip-prompt-key">Space</span> to face the Balrog
             </button>
             <p className="whip-prompt-dismiss">
@@ -693,12 +624,10 @@ export default function BalrogWhip() {
           </div>
         </div>
       )}
-
-      {/* Playing HUD */}
       {gameState === 'playing' && (
         <div className="whip-hud">
           <span className="whip-hud-score">Dodges: {dodges}</span>
-          <button className="whip-hud-quit" onClick={stopGame}>
+          <button className="whip-hud-quit" onClick={() => stopGame()}>
             Esc to quit
           </button>
         </div>
@@ -844,10 +773,4 @@ function createFadeOut(t: number, score: number): string {
 
 function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-/* ── Math helpers ── */
-
-function easeOutQuart(t: number): number {
-  return 1 - Math.pow(1 - t, 4)
 }

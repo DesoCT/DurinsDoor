@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "bcryptjs": "^3.0.3",
+    "gsap": "^3.14.2",
     "next": "16.1.6",
     "posthog-js": "^1.352.0",
     "react": "19.2.3",
