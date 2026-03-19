@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase/client'
 import { humanSize, humanDuration, fileIcon } from '@/lib/crypto'
 import type { Share } from '@/lib/types'
 import MountainSilhouette from '@/components/MountainSilhouette'
-import AtmosphericParticles from '@/components/AtmosphericParticles'
 import { Button } from '@/components/ui/button'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -75,7 +74,6 @@ export default function GalleryPage() {
 
   return (
     <>
-      <AtmosphericParticles />
       <MountainSilhouette />
       <div className="mist-layer" />
 

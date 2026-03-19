@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { encryptFile, humanSize, fileIcon } from '@/lib/crypto'
 import MountainSilhouette from '@/components/MountainSilhouette'
 import DoorSVG from '@/components/DoorSVG'
-import AtmosphericParticles from '@/components/AtmosphericParticles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -321,7 +320,6 @@ export default function HomePage() {
       </div>
 
       {/* ── Background ── */}
-      <AtmosphericParticles embers />
       <MountainSilhouette />
       <div className="mist-layer" />
 

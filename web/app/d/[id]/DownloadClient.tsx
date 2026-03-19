@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 import { decryptFile, triggerDownload } from '@/lib/crypto'
-import AtmosphericParticles from '@/components/AtmosphericParticles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
@@ -119,7 +118,6 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
 
   return (
     <>
-      <AtmosphericParticles />
       <div className="mist-layer" />
 
       <div className="page-wrapper flex flex-col items-center justify-center min-h-[100dvh] relative z-[2] px-4 py-8">

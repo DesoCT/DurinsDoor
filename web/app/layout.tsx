@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import BalrogWhip from '@/components/BalrogWhip'
 import SmoothScroll from '@/components/SmoothScroll'
+import AtmosphericParticles from '@/components/AtmosphericParticles'
 import './globals.css'
 import './balrog-whip.css'
 
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <AtmosphericParticles embers />
         <SmoothScroll />
         {children}
         <BalrogWhip />
