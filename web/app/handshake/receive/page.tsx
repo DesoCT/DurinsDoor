@@ -15,6 +15,7 @@ import {
 } from '@/lib/ecdh'
 import { deriveVerificationPhrase } from '@/lib/tolkien-words'
 import { decryptFileWithKey, triggerDownload } from '@/lib/crypto'
+import { Button } from '@/components/ui/button'
 import type { Handshake } from '@/lib/types'
 
 type PageState = 'init' | 'waiting' | 'paired' | 'completed' | 'expired' | 'error'
@@ -166,17 +167,17 @@ export default function HandshakeReceivePage() {
       <div className="mist-layer" />
       <MountainSilhouette />
 
-      <div className="page-wrapper">
-        <nav style={{ width: '100%', maxWidth: 600, margin: '0 auto 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-wrapper flex flex-col items-center justify-center min-h-[100dvh] relative z-[2] px-4 py-8">
+        <nav className="w-full max-w-[600px] mx-auto mb-6 flex justify-between items-center">
           <Link href="/" className="guide-back">← Durin&apos;s Door</Link>
           <Link href="/handshake/send" className="guide-back">Send a file →</Link>
         </nav>
 
         <div className="handshake-card fade-in-up">
           {/* Header */}
-          <div style={{ marginBottom: '1rem' }}>
-            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>⇄</span>
-            <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.3rem', color: 'var(--elvish-glow)', marginBottom: '0.3rem' }}>
+          <div className="mb-4">
+            <span className="text-3xl block mb-2">⇄</span>
+            <h1 className="font-cinzel text-[1.3rem] text-elvish-glow mb-1">
               Handshake — Receive
             </h1>
             <p className="handshake-status">Open the receiving chamber &amp; share your pairing code</p>
@@ -186,7 +187,7 @@ export default function HandshakeReceivePage() {
 
           {/* INIT */}
           {pageState === 'init' && (
-            <div style={{ padding: '2rem 0' }}>
+            <div className="py-8">
               <p className="waiting-runes">ᚠ ᚢ ᚱ ᚨ</p>
               <p className="handshake-status">Opening the receiving chamber…</p>
             </div>
@@ -195,7 +196,7 @@ export default function HandshakeReceivePage() {
           {/* WAITING */}
           {pageState === 'waiting' && (
             <>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <p className="text-[0.8rem] text-dim mb-2 uppercase tracking-wider">
                 Your Pairing Code
               </p>
               <span className="pairing-code">{pairingCode}</span>
@@ -205,7 +206,7 @@ export default function HandshakeReceivePage() {
               <p className="waiting-runes" aria-label="Waiting for sender">
                 ᚠ ᚢ ᚱ ᚨ ᛊ ᛏ ᛁ ᛜ
               </p>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '0.5rem', fontStyle: 'italic' }}>
+              <p className="text-[0.78rem] text-dim mt-2 italic">
                 Waiting for sender to connect… This code expires in 1 hour.
               </p>
             </>
@@ -214,7 +215,7 @@ export default function HandshakeReceivePage() {
           {/* PAIRED — show verification phrase */}
           {pageState === 'paired' && (
             <>
-              <div className="badge badge-active" style={{ marginBottom: '1rem' }}>
+              <div className="badge badge-active mb-4">
                 ✓ Sender connected
               </div>
               <p className="handshake-status">
@@ -224,14 +225,14 @@ export default function HandshakeReceivePage() {
                 <p className="verification-label">Tolkien Verification Phrase</p>
                 <p className="verification-phrase">{verificationPhrase}</p>
               </div>
-              <div className="shield-box" style={{ textAlign: 'left', marginTop: '1rem' }}>
+              <div className="shield-box text-left mt-4">
                 <span className="shield-box-icon">🤝</span>
                 <p className="shield-box-text">
                   If both sides show <strong>identical words</strong>, the key exchange is authentic.
                   The sender will now encrypt and send the file.
                 </p>
               </div>
-              <p className="waiting-runes" style={{ marginTop: '1rem' }}>ᛁ ᛜ ᛞ ᚢ ᚱ ᛁ ᚾ</p>
+              <p className="waiting-runes mt-4">ᛁ ᛜ ᛞ ᚢ ᚱ ᛁ ᚾ</p>
               <p className="handshake-status">Awaiting the file from the sender…</p>
             </>
           )}
@@ -239,25 +240,25 @@ export default function HandshakeReceivePage() {
           {/* COMPLETED — download ready */}
           {pageState === 'completed' && (
             <>
-              <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>✦</span>
-              <h2 style={{ fontFamily: 'Cinzel, serif', color: 'var(--gold)', marginBottom: '0.5rem' }}>
+              <span className="text-5xl block mb-4">✦</span>
+              <h2 className="font-cinzel text-gold mb-2">
                 The vault has yielded its secret.
               </h2>
               {verificationPhrase && (
-                <div className="verification-box" style={{ marginBottom: '1.5rem' }}>
+                <div className="verification-box mb-6">
                   <p className="verification-label">Verification Phrase</p>
                   <p className="verification-phrase">{verificationPhrase}</p>
                 </div>
               )}
               {shareId ? (
-                <button
-                  className="btn-portal"
+                <Button
+                  variant="portal"
+                  rune="⬇"
                   onClick={handleDownload}
                   disabled={downloading}
                 >
-                  <span className="btn-rune">⬇</span>
                   {downloading ? 'Decrypting…' : 'Receive & Decrypt File'}
-                </button>
+                </Button>
               ) : (
                 <p className="handshake-status">File record not linked — ask sender to retry.</p>
               )}
@@ -268,11 +269,11 @@ export default function HandshakeReceivePage() {
           {pageState === 'expired' && (
             <div className="error-card">
               <span className="error-glyph">⏳</span>
-              <p className="error-title" style={{ color: 'var(--text-dim)' }}>The pairing code has expired.</p>
+              <p className="error-title text-dim">The pairing code has expired.</p>
               <p className="error-message">Generate a new code to try again.</p>
-              <button className="btn-elvish" onClick={() => window.location.reload()}>
+              <Button variant="elvish" onClick={() => window.location.reload()}>
                 ↩ Generate New Code
-              </button>
+              </Button>
             </div>
           )}
 
@@ -282,15 +283,15 @@ export default function HandshakeReceivePage() {
               <span className="error-glyph">🌑</span>
               <p className="error-title">The chamber would not open</p>
               <p className="error-message">{errorMsg}</p>
-              <button className="btn-silver" onClick={() => window.location.reload()}>
+              <Button variant="silver" onClick={() => window.location.reload()}>
                 ↩ Try Again
-              </button>
+              </Button>
             </div>
           )}
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <Link href="/guide#handshake" style={{ color: 'var(--text-dim)', fontSize: '0.78rem', opacity: 0.6 }}>
+        <div className="text-center mt-6">
+          <Link href="/guide#handshake" className="text-dim text-[0.78rem] opacity-60">
             How does Handshake mode work? →
           </Link>
         </div>

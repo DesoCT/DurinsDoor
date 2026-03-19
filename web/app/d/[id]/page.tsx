@@ -4,6 +4,7 @@ import type { Share } from '@/lib/types'
 import DownloadClient from './DownloadClient'
 import SmallArch from '@/components/SmallArch'
 import ErrorCard from '@/components/ErrorCard'
+import AtmosphericParticles from '@/components/AtmosphericParticles'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -49,7 +50,7 @@ export default async function DownloadPage({ params }: Props) {
 function DownloadError({ message }: { message: string }) {
   return (
     <>
-      <canvas id="stars-canvas" style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
+      <AtmosphericParticles />
       <div className="mist-layer" />
       <div className="page-wrapper">
         <div style={{ marginBottom: '1.5rem', opacity: 0.55 }}>

@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import GuideAnimations from '@/components/GuideAnimations'
 
 export default function GuidePage() {
   return (
     <>
+      <GuideAnimations />
       <div className="mist-layer" />
       <div className="guide-wrapper">
         <nav className="guide-nav">

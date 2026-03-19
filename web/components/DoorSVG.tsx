@@ -51,10 +51,42 @@ export default function DoorSVG({ onStarClick }: { onStarClick: () => void }) {
     // 11. Corner knotwork
     tl.from('.corner-knot', { opacity: 0, scale: 0, transformOrigin: 'center', duration: 0.4, stagger: 0.15 }, 2.0)
 
+    // Rune inscription starts at baseline opacity
+    gsap.set('.rune-inscription', { opacity: 0.3 })
+
   }, { scope: svgRef })
 
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current
+    if (!svg) return
+    const rect = svg.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    // Scale to SVG viewBox coordinates
+    const svgX = (x / rect.width) * 400
+    const svgY = (y / rect.height) * 520
+    // Distance to rune inscription (at y=52, centered at x=200)
+    const dist = Math.sqrt((svgX - 200) ** 2 + (svgY - 52) ** 2)
+    const glow = Math.max(0, 1 - dist / 200)
+    gsap.to('.rune-inscription', {
+      opacity: 0.3 + glow * 0.7,
+      filter: `drop-shadow(0 0 ${glow * 8}px rgba(107,197,255,${glow * 0.6}))`,
+      duration: 0.3,
+      overwrite: true,
+    })
+  }
+
+  const handleMouseLeave = () => {
+    gsap.to('.rune-inscription', {
+      opacity: 0.3,
+      filter: 'drop-shadow(0 0 0px rgba(107,197,255,0))',
+      duration: 0.5,
+      overwrite: true,
+    })
+  }
+
   return (
-    <svg ref={svgRef} className="door-svg" viewBox="0 0 400 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Durin's Door arch" id="door-svg">
+    <svg ref={svgRef} className="door-svg" viewBox="0 0 400 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Durin's Door arch" id="door-svg" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
       <defs>
         <filter id="glow-elvish" x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="3.5" result="b"/>

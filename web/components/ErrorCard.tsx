@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 interface ErrorCardProps {
   glyph?: string
@@ -15,11 +16,11 @@ export default function ErrorCard({ glyph = '🚪', title, message, action }: Er
       <p className="error-message">{message}</p>
       {action && (
         'href' in action ? (
-          <Link href={action.href} className="btn-portal" style={{ maxWidth: '220px', margin: '0 auto', textDecoration: 'none', display: 'flex' }}>
+          <Link href={action.href} className="btn-portal no-underline flex items-center justify-center max-w-[220px] mx-auto">
             <span className="btn-rune">↩</span> {action.label}
           </Link>
         ) : (
-          <button className="btn-silver" onClick={action.onClick}>↩ {action.label}</button>
+          <Button variant="silver" onClick={action.onClick}>↩ {action.label}</Button>
         )
       )}
     </div>

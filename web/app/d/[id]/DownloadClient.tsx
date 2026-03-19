@@ -1,9 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 
 import { decryptFile, triggerDownload } from '@/lib/crypto'
+import AtmosphericParticles from '@/components/AtmosphericParticles'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Progress } from '@/components/ui/progress'
 import type { Share } from '@/lib/types'
 
 interface Props {
@@ -23,37 +27,6 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
   const [errorMsg, setErrorMsg] = useState('')
   const [progress, setProgress] = useState(0)
   const [noKey, setNoKey] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  // Stars animation
-  useEffect(() => {
-    const cv = canvasRef.current
-    if (!cv) return
-    const cx = cv.getContext('2d')
-    if (!cx) return
-    let W = 0, H = 0
-    let stars: { x: number; y: number; r: number; phase: number; speed: number; blue: boolean }[] = []
-    let frame = 0
-    let rafId: number
-    function resize() {
-      if (!cv) return
-      W = cv!.width = window.innerWidth; H = cv!.height = window.innerHeight
-      stars = []
-      for (let i = 0; i < 160; i++) stars.push({ x: Math.random() * W, y: Math.random() * H * 0.65, r: Math.random() * 1.2 + 0.2, phase: Math.random() * Math.PI * 2, speed: 0.005 + Math.random() * 0.015, blue: Math.random() < 0.2 })
-    }
-    function draw() {
-      if (!cx) return
-      cx!.clearRect(0, 0, W, H); frame++
-      for (const s of stars) {
-        const lum = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(s.phase + frame * s.speed))
-        cx!.fillStyle = s.blue ? `rgba(150,210,255,${lum})` : `rgba(215,205,185,${lum * 0.85})`
-        cx!.beginPath(); cx!.arc(s.x, s.y, s.r, 0, Math.PI * 2); cx!.fill()
-      }
-      rafId = requestAnimationFrame(draw)
-    }
-    window.addEventListener('resize', resize, { passive: true }); resize(); draw()
-    return () => { cancelAnimationFrame(rafId); window.removeEventListener('resize', resize) }
-  }, [])
 
   async function handleDownload() {
     // Extract key from URL fragment
@@ -146,12 +119,12 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
 
   return (
     <>
-      <canvas id="stars-canvas" ref={canvasRef} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
+      <AtmosphericParticles />
       <div className="mist-layer" />
 
-      <div className="page-wrapper">
+      <div className="page-wrapper flex flex-col items-center justify-center min-h-[100dvh] relative z-[2] px-4 py-8">
         {/* Small arch watermark */}
-        <div style={{ marginBottom: '1.5rem', opacity: 0.55 }}>
+        <div className="mb-6 opacity-55">
           <svg width="60" height="72" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
             <defs><filter id="gs"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
             <path fill="#0d1525" stroke="#2a3a5c" strokeWidth="1" fillRule="evenodd" d="M 0 80 L 0 0 L 60 0 L 60 80 Z M 10 78 L 10 42 Q 9 12 30 8 Q 51 12 50 42 L 50 78 Z"/>
@@ -173,21 +146,21 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
               <span className="error-glyph">🌑</span>
               <h1 className="error-title">The Door Would Not Open</h1>
               <p className="error-message">{errorMsg}</p>
-              <Link href="/" className="btn-portal" style={{ maxWidth: '220px', margin: '0 auto', textDecoration: 'none', display: 'flex' }}>
+              <Link href="/" className="btn-portal no-underline flex items-center justify-center max-w-[220px] mx-auto">
                 <span className="btn-rune">↩</span> Return Home
               </Link>
             </div>
           </div>
         ) : dlState === 'done' ? (
-          <div className="download-card fade-in-up" style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>✦</span>
-            <p style={{ fontFamily: 'Cinzel, serif', color: 'var(--gold)', fontSize: '1.1rem', marginBottom: '1rem' }}>
+          <div className="download-card fade-in-up text-center">
+            <span className="text-5xl block mb-4">✦</span>
+            <p className="font-cinzel text-gold text-[1.1rem] mb-4">
               The vault has yielded its secret.
             </p>
-            <p style={{ color: 'var(--text-dim)', fontStyle: 'italic', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+            <p className="text-dim italic mb-6 text-[0.9rem]">
               {share.filename} has been decrypted and delivered to your device.
             </p>
-            <Link href="/" style={{ color: 'var(--silver)', fontSize: '0.85rem' }}>← Return to Durin&apos;s Door</Link>
+            <Link href="/" className="text-silver text-[0.85rem]">← Return to Durin&apos;s Door</Link>
           </div>
         ) : (
           <div className="download-card fade-in-up">
@@ -196,7 +169,7 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
             <p className="file-name">{share.filename}</p>
 
             {/* Meta grid */}
-            <div className="meta-grid">
+            <div className="meta-grid grid grid-cols-2 gap-x-4 gap-y-2">
               <div className="meta-item">
                 <span className="meta-label">Size</span>
                 <span className="meta-value">{humanSizeStr}</span>
@@ -218,7 +191,7 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
             </div>
 
             {share.password_hash && (
-              <div style={{ textAlign: 'center', marginBottom: '0.8rem' }}>
+              <div className="text-center mb-3">
                 <span className="badge badge-locked">🔑 Password Required</span>
               </div>
             )}
@@ -227,12 +200,11 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
 
             {share.password_hash && (
               <div className="password-section">
-                <span style={{ fontSize: '1.4rem', display: 'block', textAlign: 'center', marginBottom: '0.6rem' }}>🔐</span>
+                <span className="text-[1.4rem] block text-center mb-2.5">🔐</span>
                 <label htmlFor="password">Speak the word to open the door</label>
-                <input
+                <Input
                   type="password"
                   id="password"
-                  className="rune-input"
                   placeholder="Enter the password…"
                   value={password}
                   onChange={e => { setPassword(e.target.value); setPasswordError('') }}
@@ -243,8 +215,8 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
               </div>
             )}
 
-            <button
-              className="btn-portal"
+            <Button
+              variant="portal"
               onClick={handleDownload}
               disabled={dlState !== 'idle'}
             >
@@ -252,29 +224,27 @@ export default function DownloadClient({ share, humanSizeStr, expiresIn, fileIco
               {dlState === 'verifying' && <><span className="btn-rune">🔑</span> Verifying the word…</>}
               {dlState === 'fetching' && <><span className="btn-rune">⚗️</span> Fetching from the vault…</>}
               {dlState === 'decrypting' && <><span className="btn-rune">⚙️</span> Decrypting…</>}
-            </button>
+            </Button>
 
             {/* Progress bar */}
             {(dlState === 'verifying' || dlState === 'fetching' || dlState === 'decrypting') && (
-              <div className="download-progress visible" style={{ marginTop: '1.2rem' }}>
+              <div className="download-progress visible mt-5">
                 <div className="progress-label">
                   {dlState === 'verifying' ? 'Verifying password…' : dlState === 'fetching' ? 'Fetching from vault…' : 'Decrypting…'}
                 </div>
-                <div className="progress-bar-track">
-                  <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
-                </div>
+                <Progress value={progress} />
               </div>
             )}
 
             {downloadsLeft !== null && (
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', textAlign: 'center', marginTop: '0.8rem', fontStyle: 'italic' }}>
+              <p className="text-[0.75rem] text-dim text-center mt-3 italic">
                 {downloadsLeft} download{downloadsLeft !== 1 ? 's' : ''} remaining
               </p>
             )}
           </div>
         )}
 
-        <Link href="/" style={{ display: 'block', textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-dim)', fontSize: '0.8rem', opacity: 0.55 }}>
+        <Link href="/" className="block text-center mt-6 text-dim text-[0.8rem] opacity-55">
           ← Back to Durin&apos;s Door
         </Link>
       </div>

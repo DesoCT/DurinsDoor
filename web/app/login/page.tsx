@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import SmallArch from '@/components/SmallArch'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -30,8 +33,8 @@ export default function LoginPage() {
   return (
     <>
       <div className="mist-layer" />
-      <div className="page-wrapper">
-        <div style={{ marginBottom: '2rem', opacity: 0.7 }}>
+      <div className="page-wrapper flex flex-col items-center justify-center min-h-[100dvh] relative z-[2] px-4 py-8">
+        <div className="mb-8 opacity-70">
           <SmallArch />
         </div>
 
@@ -44,12 +47,11 @@ export default function LoginPage() {
           <div className="rune-divider">· · ᛖᚾᛏᛖᚱ · ·</div>
 
           <form onSubmit={handleLogin}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">Email</label>
-              <input
+            <div className="form-group flex flex-col gap-1.5 mb-4">
+              <Label htmlFor="email">Email</Label>
+              <Input
                 id="email"
                 type="email"
-                className="rune-input"
                 placeholder="your@email.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -58,12 +60,11 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">Password</label>
-              <input
+            <div className="form-group flex flex-col gap-1.5 mb-4">
+              <Label htmlFor="password">Password</Label>
+              <Input
                 id="password"
                 type="password"
-                className="rune-input"
                 placeholder="Speak the word…"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -73,32 +74,32 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <p className="error-rune" style={{ marginBottom: '1rem' }}>
+              <p className="error-rune mb-4">
                 ✕ {error}
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
-              className="btn-portal"
+              variant="portal"
+              rune="🚪"
               disabled={loading}
-              style={{ marginTop: '0.5rem' }}
+              className="mt-2"
             >
-              <span className="btn-rune">🚪</span>
               {loading ? 'Opening the door…' : 'Enter'}
-            </button>
+            </Button>
           </form>
 
           <div className="rune-divider">· · ᚱᚢᚾᛖ · ·</div>
 
-          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+          <p className="text-center text-[0.85rem] text-dim">
             No account?{' '}
             <Link href="/signup" className="auth-link">Join the Fellowship →</Link>
           </p>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <Link href="/" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', opacity: 0.55 }}>
+        <div className="text-center mt-6">
+          <Link href="/" className="text-dim text-[0.8rem] opacity-55">
             ← Return to Durin&apos;s Door
           </Link>
         </div>
@@ -106,4 +107,3 @@ export default function LoginPage() {
     </>
   )
 }
-

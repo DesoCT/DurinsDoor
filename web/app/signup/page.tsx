@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import SmallArch from '@/components/SmallArch'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function SignupPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -49,16 +50,17 @@ export default function SignupPage() {
     return (
       <>
         <div className="mist-layer" />
-        <div className="page-wrapper">
-          <div className="auth-card fade-in-up" style={{ textAlign: 'center' }}>
-            <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>✦</span>
+        <div className="page-wrapper flex flex-col items-center justify-center min-h-[100dvh] relative z-[2] px-4 py-8">
+          <div className="auth-card fade-in-up text-center">
+            <span className="text-5xl block mb-4">✦</span>
             <h1 className="auth-title">Fellowship Joined</h1>
-            <p className="auth-subtitle" style={{ marginBottom: '1.5rem' }}>
-              A scroll has been sent to <strong style={{ color: 'var(--silver-glow)' }}>{email}</strong>.
+            <p className="auth-subtitle mb-6">
+              A scroll has been sent to <strong className="text-silver-glow">
+              {email}</strong>.
               Follow the link within to confirm your passage.
             </p>
             <div className="rune-divider">· · ᚠᚱᛖᛟᚾᛞ · ·</div>
-            <Link href="/login" className="btn-portal" style={{ textDecoration: 'none' }}>
+            <Link href="/login" className="btn-portal no-underline inline-flex items-center justify-center gap-2">
               <span className="btn-rune">🚪</span> Proceed to the Door
             </Link>
           </div>
@@ -70,8 +72,8 @@ export default function SignupPage() {
   return (
     <>
       <div className="mist-layer" />
-      <div className="page-wrapper">
-        <div style={{ marginBottom: '2rem', opacity: 0.7 }}>
+      <div className="page-wrapper flex flex-col items-center justify-center min-h-[100dvh] relative z-[2] px-4 py-8">
+        <div className="mb-8 opacity-70">
           <SmallArch />
         </div>
 
@@ -84,12 +86,11 @@ export default function SignupPage() {
           <div className="rune-divider">· · ᚠᛖᛚᛚᛟᚹᛊᚺᛁᛈ · ·</div>
 
           <form onSubmit={handleSignup}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">Email</label>
-              <input
+            <div className="form-group flex flex-col gap-1.5 mb-4">
+              <Label htmlFor="email">Email</Label>
+              <Input
                 id="email"
                 type="email"
-                className="rune-input"
                 placeholder="your@email.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -98,12 +99,11 @@ export default function SignupPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">Password</label>
-              <input
+            <div className="form-group flex flex-col gap-1.5 mb-4">
+              <Label htmlFor="password">Password</Label>
+              <Input
                 id="password"
                 type="password"
-                className="rune-input"
                 placeholder="Choose your word of passage…"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -113,12 +113,11 @@ export default function SignupPage() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="confirm">Confirm Password</label>
-              <input
+            <div className="form-group flex flex-col gap-1.5 mb-4">
+              <Label htmlFor="confirm">Confirm Password</Label>
+              <Input
                 id="confirm"
                 type="password"
-                className="rune-input"
                 placeholder="Speak it once more…"
                 value={confirm}
                 onChange={e => setConfirm(e.target.value)}
@@ -128,32 +127,32 @@ export default function SignupPage() {
             </div>
 
             {error && (
-              <p className="error-rune" style={{ marginBottom: '1rem' }}>
+              <p className="error-rune mb-4">
                 ✕ {error}
               </p>
             )}
 
-            <button
+            <Button
               type="submit"
-              className="btn-portal"
+              variant="portal"
+              rune="✦"
               disabled={loading}
-              style={{ marginTop: '0.5rem' }}
+              className="mt-2"
             >
-              <span className="btn-rune">✦</span>
               {loading ? 'Carving your name…' : 'Join the Fellowship'}
-            </button>
+            </Button>
           </form>
 
           <div className="rune-divider">· · ᚱᚢᚾᛖ · ·</div>
 
-          <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+          <p className="text-center text-[0.85rem] text-dim">
             Already a member?{' '}
             <Link href="/login" className="auth-link">Enter the Hall →</Link>
           </p>
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <Link href="/" style={{ color: 'var(--text-dim)', fontSize: '0.8rem', opacity: 0.55 }}>
+        <div className="text-center mt-6">
+          <Link href="/" className="text-dim text-[0.8rem] opacity-55">
             ← Return to Durin&apos;s Door
           </Link>
         </div>
@@ -161,4 +160,3 @@ export default function SignupPage() {
     </>
   )
 }
-
