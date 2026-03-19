@@ -5,7 +5,6 @@ import Link from 'next/link'
 
 import { decryptFile, triggerDownload } from '@/lib/crypto'
 import type { Share } from '@/lib/types'
-import StarCanvas from '@/components/StarCanvas'
 
 interface Props {
   share: Share
