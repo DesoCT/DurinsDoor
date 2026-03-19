@@ -97,7 +97,7 @@ export default function AtmosphericParticles({ embers = false }: AtmosphericPart
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 0,
+          zIndex: -1,
           pointerEvents: 'none',
           height: '75vh',
         }}
@@ -109,7 +109,7 @@ export default function AtmosphericParticles({ embers = false }: AtmosphericPart
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 0,
+            zIndex: -1,
             pointerEvents: 'none',
           }}
         />
