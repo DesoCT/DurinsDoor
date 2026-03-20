@@ -9,7 +9,7 @@ export default function Template({ children }: { children: React.ReactNode }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        style={{ minHeight: '100dvh' }}
+        style={{ position: 'relative', zIndex: 1 }}
       >
         {children}
       </m.div>

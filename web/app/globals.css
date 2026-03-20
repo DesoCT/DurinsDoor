@@ -66,12 +66,23 @@ body {
   position: relative;
 }
 
-/* ── Stars ────────────────────────────────────────── */
-#stars-canvas {
-  position: fixed;
+/* ── Stars & Particles ────────────────────────────── */
+#stars-particles,
+#ember-particles {
+  position: fixed !important;
   inset: 0;
   pointer-events: none;
   z-index: 0;
+}
+#stars-particles {
+  height: 75vh;
+}
+#stars-particles canvas,
+#ember-particles canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 /* ── Mist ─────────────────────────────────────────── */

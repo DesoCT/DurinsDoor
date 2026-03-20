@@ -91,29 +91,8 @@ export default function AtmosphericParticles({ embers = false }: AtmosphericPart
 
   return (
     <>
-      <Particles
-        id="stars-particles"
-        options={starsConfig}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: 'none',
-          height: '75vh',
-        }}
-      />
-      {embers && (
-        <Particles
-          id="ember-particles"
-          options={embersConfig}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 0,
-            pointerEvents: 'none',
-          }}
-        />
-      )}
+      <Particles id="stars-particles" options={starsConfig} />
+      {embers && <Particles id="ember-particles" options={embersConfig} />}
     </>
   )
 }
