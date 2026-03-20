@@ -1,12 +1,17 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { humanSize, humanDuration, fileIcon } from '@/lib/crypto'
 import type { Share } from '@/lib/types'
-import StarCanvas from '@/components/StarCanvas'
+import MountainSilhouette from '@/components/MountainSilhouette'
+import { Button } from '@/components/ui/button'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
 
 export default function GalleryPage() {
   const router = useRouter()
@@ -14,29 +19,23 @@ export default function GalleryPage() {
   const [loading, setLoading] = useState(true)
   const [authed, setAuthed] = useState(false)
 
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  // Stars
+  // ScrollTrigger stagger for gallery cards
   useEffect(() => {
-    const cv = canvasRef.current; if (!cv) return
-    const cx = cv.getContext('2d'); if (!cx) return
-    let W = 0, H = 0, stars: { x: number; y: number; r: number; phase: number; speed: number; blue: boolean }[] = [], frame = 0, rafId: number
-    function resize() {
-      if (!cv) return
-      W = cv!.width = window.innerWidth; H = cv!.height = window.innerHeight; stars = []
-      for (let i = 0; i < 200; i++) stars.push({ x: Math.random() * W, y: Math.random() * H * 0.7, r: Math.random() * 1.3 + 0.2, phase: Math.random() * Math.PI * 2, speed: 0.004 + Math.random() * 0.016, blue: Math.random() < 0.2 })
-    }
-    function draw() {
-      cx!.clearRect(0, 0, W, H); frame++
-      for (const s of stars) {
-        const lum = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(s.phase + frame * s.speed))
-        cx!.fillStyle = s.blue ? `rgba(150,210,255,${lum})` : `rgba(215,205,185,${lum * 0.85})`
-        cx!.beginPath(); cx!.arc(s.x, s.y, s.r, 0, Math.PI * 2); cx!.fill()
-      }
-      rafId = requestAnimationFrame(draw)
-    }
-    window.addEventListener('resize', resize, { passive: true }); resize(); draw()
-    return () => { cancelAnimationFrame(rafId); window.removeEventListener('resize', resize) }
+    const ctx = gsap.context(() => {
+      ScrollTrigger.batch('.scroll-card', {
+        onEnter: (batch) => {
+          gsap.from(batch, {
+            opacity: 0,
+            y: 30,
+            stagger: 0.08,
+            duration: 0.6,
+            ease: 'power2.out',
+          })
+        },
+        start: 'top 88%',
+      })
+    })
+    return () => ctx.revert()
   }, [])
 
   useEffect(() => {
@@ -75,11 +74,10 @@ export default function GalleryPage() {
 
   return (
     <>
-      <canvas id="stars-canvas" ref={canvasRef} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }} />
       <MountainSilhouette />
       <div className="mist-layer" />
 
-      <div className="gallery-wrapper">
+      <div className="gallery-wrapper relative z-[2] max-w-[1200px] mx-auto px-6 py-8 min-h-screen">
         <nav className="gallery-nav">
           <Link href="/" className="gallery-back">← Durin&apos;s Door</Link>
           {shares.length > 0 && (
@@ -113,7 +111,7 @@ export default function GalleryPage() {
         </header>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+          <div className="text-center p-12 text-dim italic">
             Searching the depths…
           </div>
         ) : shares.length === 0 ? (
@@ -121,16 +119,16 @@ export default function GalleryPage() {
             <span className="vault-empty-glyph">🚪</span>
             <h2 className="vault-empty-title">The halls are empty.</h2>
             <p className="vault-empty-sub">No artifacts remain within the vault.<br />Share a file to light the dark.</p>
-            <div style={{ marginTop: '2.5rem' }}>
-              <Link href="/" className="btn-portal" style={{ maxWidth: '240px', margin: '0 auto', textDecoration: 'none', display: 'flex' }}>
+            <div className="mt-10">
+              <Link href="/" className="btn-portal no-underline flex items-center justify-center max-w-[240px] mx-auto">
                 <span className="btn-rune">🚪</span> Open the Door
               </Link>
             </div>
           </div>
         ) : (
           <div className="scroll-grid">
-            {shares.map((share, i) => (
-              <div key={share.id} className="scroll-card fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
+            {shares.map((share) => (
+              <div key={share.id} className="scroll-card">
                 {share.password_hash && <span className="scroll-lock">🔑</span>}
 
                 <div className="scroll-top">
@@ -155,22 +153,22 @@ export default function GalleryPage() {
                   </div>
                   <div className="scroll-stat">
                     <span className="scroll-stat-label">Encryption</span>
-                    <span className="scroll-stat-value" style={{ fontSize: '0.75rem' }}>AES-256-GCM</span>
+                    <span className="scroll-stat-value text-[0.75rem]">AES-256-GCM</span>
                   </div>
                 </div>
 
                 <div className="scroll-footer">
                   <span className="scroll-rune-bar">· ᚱ ᛁ ᚾ ·</span>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <button
+                  <div className="flex gap-2 items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => handleDelete(share.id, share.storage_path)}
-                      style={{ background: 'transparent', border: '1px solid rgba(192,57,43,0.3)', color: '#c05050', borderRadius: '3px', padding: '0.2rem 0.5rem', fontSize: '0.7rem', cursor: 'pointer', transition: 'all 0.2s' }}
-                      onMouseOver={e => { (e.target as HTMLElement).style.color = '#e06060'; (e.target as HTMLElement).style.borderColor = 'var(--danger)' }}
-                      onMouseOut={e => { (e.target as HTMLElement).style.color = '#c05050'; (e.target as HTMLElement).style.borderColor = 'rgba(192,57,43,0.3)' }}
+                      className="bg-transparent border border-danger/30 text-[#c05050] rounded-[3px] py-0.5 px-2 text-[0.7rem] cursor-pointer transition-all duration-200 hover:text-[#e06060] hover:border-danger"
                     >
                       Revoke
-                    </button>
-                    <Link href={`/d/${share.id}`} className="scroll-enter-hint" style={{ textDecoration: 'none' }}>Open →</Link>
+                    </Button>
+                    <Link href={`/d/${share.id}`} className="scroll-enter-hint no-underline">Open →</Link>
                   </div>
                 </div>
               </div>
@@ -182,12 +180,3 @@ export default function GalleryPage() {
   )
 }
 
-function MountainSilhouette() {
-  return (
-    <svg className="mountain-silhouette" viewBox="0 0 1400 130" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <defs><linearGradient id="mountFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#0a0e1a" stopOpacity="0"/><stop offset="55%" stopColor="#080c16" stopOpacity="0.7"/><stop offset="100%" stopColor="#050810" stopOpacity="1"/></linearGradient></defs>
-      <path d="M0 130 L0 90 L60 55 L110 75 L170 32 L230 62 L290 20 L360 58 L430 35 L500 70 L570 15 L640 55 L700 30 L760 65 L830 10 L890 50 L950 25 L1020 60 L1080 38 L1140 70 L1200 22 L1260 55 L1320 40 L1380 68 L1400 50 L1400 130 Z" fill="#07090f"/>
-      <rect x="0" y="0" width="1400" height="130" fill="url(#mountFade)"/>
-    </svg>
-  )
-}

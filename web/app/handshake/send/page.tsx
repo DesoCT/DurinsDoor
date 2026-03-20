@@ -12,6 +12,8 @@ import {
 } from '@/lib/ecdh'
 import { deriveVerificationPhrase } from '@/lib/tolkien-words'
 import { encryptFileWithKey, humanSize, fileIcon } from '@/lib/crypto'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import type { Handshake } from '@/lib/types'
 
 type PageState = 'idle' | 'looking' | 'verified' | 'uploading' | 'done' | 'error'
@@ -166,8 +168,8 @@ export default function HandshakeSendPage() {
       <div className="mist-layer" />
       <MountainSilhouette />
 
-      <div className="page-wrapper">
-        <nav style={{ width: '100%', maxWidth: 600, margin: '0 auto 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-wrapper flex flex-col items-center justify-center min-h-[100dvh] relative z-[2] px-4 py-8">
+        <nav className="w-full max-w-[600px] mx-auto mb-6 flex justify-between items-center">
           <Link href="/" className="guide-back">← Durin&apos;s Door</Link>
           <Link href="/handshake/receive" className="guide-back">Receive a file →</Link>
         </nav>
@@ -185,9 +187,9 @@ export default function HandshakeSendPage() {
 
         <div className="handshake-card fade-in-up">
           {/* Header */}
-          <div style={{ marginBottom: '1rem' }}>
-            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}>⇄</span>
-            <h1 style={{ fontFamily: 'Cinzel, serif', fontSize: '1.3rem', color: 'var(--elvish-glow)', marginBottom: '0.3rem' }}>
+          <div className="mb-4">
+            <span className="text-3xl block mb-2">⇄</span>
+            <h1 className="font-cinzel text-[1.3rem] text-elvish-glow mb-1">
               Handshake — Send
             </h1>
             <p className="handshake-status">Enter the receiver&apos;s pairing code to begin the exchange</p>
@@ -198,7 +200,7 @@ export default function HandshakeSendPage() {
           {/* IDLE — enter code */}
           {(pageState === 'idle' || pageState === 'looking') && (
             <>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <p className="text-[0.8rem] text-dim mb-2 uppercase tracking-wider">
                 Pairing Code
               </p>
 
@@ -215,20 +217,20 @@ export default function HandshakeSendPage() {
                   autoComplete="off"
                   spellCheck={false}
                 />
-                <button
-                  className="btn-elvish"
+                <Button
+                  variant="elvish"
                   onClick={handleConnect}
                   disabled={pageState === 'looking' || code.trim().length < 6}
                 >
                   {pageState === 'looking' ? '…' : 'Connect'}
-                </button>
+                </Button>
               </div>
 
               {errorMsg && (
-                <p className="error-rune" style={{ marginTop: '0.5rem' }}>✕ {errorMsg}</p>
+                <p className="error-rune mt-2">✕ {errorMsg}</p>
               )}
 
-              <p className="handshake-status" style={{ marginTop: '1rem' }}>
+              <p className="handshake-status mt-4">
                 Enter the code shown on the receiver&apos;s screen.
                 The ECDH key exchange happens automatically — no URL to share.
               </p>
@@ -238,7 +240,7 @@ export default function HandshakeSendPage() {
           {/* VERIFIED — show phrase + file picker */}
           {pageState === 'verified' && (
             <>
-              <div className="badge badge-active" style={{ marginBottom: '1rem' }}>
+              <div className="badge badge-active mb-4">
                 ✓ Key exchange complete
               </div>
 
@@ -251,7 +253,7 @@ export default function HandshakeSendPage() {
                 <p className="verification-phrase">{verificationPhrase}</p>
               </div>
 
-              <div className="shield-box" style={{ textAlign: 'left', margin: '1rem 0' }}>
+              <div className="shield-box text-left my-4">
                 <span className="shield-box-icon">🤝</span>
                 <p className="shield-box-text">
                   If both sides show <strong>identical words</strong>, the key exchange is authentic.
@@ -262,57 +264,50 @@ export default function HandshakeSendPage() {
               <div className="rune-divider">· · ᚠᛁᛚᛖ · ·</div>
 
               {!file ? (
-                <button
-                  className="btn-portal"
+                <Button
+                  variant="portal"
+                  rune="📁"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <span className="btn-rune">📁</span> Choose File to Send
-                </button>
+                  Choose File to Send
+                </Button>
               ) : (
                 <div>
-                  <div style={{
-                    background: 'var(--bg-stone)',
-                    border: '1px solid var(--border-rune)',
-                    borderRadius: 'var(--radius)',
-                    padding: '0.75rem 1rem',
-                    marginBottom: '1rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                  }}>
-                    <span style={{ fontSize: '1.5rem' }}>{fileIcon(file.name)}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'Cinzel, serif', fontSize: '0.9rem', color: 'var(--gold)', wordBreak: 'break-all' }}>
+                  <div className="bg-stone border border-rune-border rounded-rune py-3 px-4 mb-4 flex items-center gap-3">
+                    <span className="text-2xl">{fileIcon(file.name)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-cinzel text-[0.9rem] text-gold break-all">
                         {file.name}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                      <div className="text-[0.75rem] text-dim">
                         {humanSize(file.size)}
                       </div>
                     </div>
                     <button
                       onClick={() => setFile(null)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer', fontSize: '1rem', flexShrink: 0 }}
+                      className="bg-transparent border-none text-dim cursor-pointer text-base shrink-0"
                       title="Remove file"
                     >
                       ✕
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button
-                      className="btn-silver"
-                      style={{ flex: 1 }}
+                  <div className="flex gap-3">
+                    <Button
+                      variant="silver"
+                      className="flex-1"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       Change
-                    </button>
-                    <button
-                      className="btn-portal"
-                      style={{ flex: 2 }}
+                    </Button>
+                    <Button
+                      variant="portal"
+                      rune="🚪"
+                      className="flex-[2]"
                       onClick={handleSend}
                     >
-                      <span className="btn-rune">🚪</span> Encrypt &amp; Send
-                    </button>
+                      Encrypt &amp; Send
+                    </Button>
                   </div>
                 </div>
               )}
@@ -321,35 +316,33 @@ export default function HandshakeSendPage() {
 
           {/* UPLOADING */}
           {pageState === 'uploading' && (
-            <div style={{ padding: '1rem 0', textAlign: 'center' }}>
-              <span style={{ fontSize: '2rem', display: 'block', marginBottom: '1rem' }}>⚗️</span>
-              <p style={{ fontFamily: 'Cinzel, serif', color: 'var(--elvish)', marginBottom: '0.5rem' }}>
+            <div className="py-4 text-center">
+              <span className="text-3xl block mb-4">⚗️</span>
+              <p className="font-cinzel text-elvish mb-2">
                 {uploadProgress}
               </p>
-              <div className="progress-bar-track" style={{ marginTop: '1rem' }}>
-                <div className="progress-bar-fill" style={{ width: '100%' }} />
-              </div>
+              <Progress indeterminate className="mt-4" />
             </div>
           )}
 
           {/* DONE */}
           {pageState === 'done' && (
             <>
-              <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>✦</span>
-              <h2 style={{ fontFamily: 'Cinzel, serif', color: 'var(--gold)', marginBottom: '0.5rem' }}>
+              <span className="text-5xl block mb-4">✦</span>
+              <h2 className="font-cinzel text-gold mb-2">
                 The artifact has passed through the door.
               </h2>
-              <p className="handshake-status" style={{ marginBottom: '1.5rem' }}>
+              <p className="handshake-status mb-6">
                 The receiver&apos;s screen will update automatically. The encrypted file
                 is ready to be decrypted on their end.
               </p>
               {verificationPhrase && (
-                <div className="verification-box" style={{ marginBottom: '1.5rem' }}>
+                <div className="verification-box mb-6">
                   <p className="verification-label">Verification Phrase</p>
                   <p className="verification-phrase">{verificationPhrase}</p>
                 </div>
               )}
-              <Link href="/" className="btn-silver" style={{ textDecoration: 'none', display: 'flex', maxWidth: 260, margin: '0 auto' }}>
+              <Link href="/" className="btn-silver no-underline flex items-center justify-center max-w-[260px] mx-auto">
                 ↩ Return to the Door
               </Link>
             </>
@@ -361,15 +354,15 @@ export default function HandshakeSendPage() {
               <span className="error-glyph">🌑</span>
               <p className="error-title">The passage failed</p>
               <p className="error-message">{errorMsg}</p>
-              <button className="btn-silver" onClick={() => { setPageState('verified'); setErrorMsg('') }}>
+              <Button variant="silver" onClick={() => { setPageState('verified'); setErrorMsg('') }}>
                 ↩ Try Again
-              </button>
+              </Button>
             </div>
           )}
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <Link href="/guide#handshake" style={{ color: 'var(--text-dim)', fontSize: '0.78rem', opacity: 0.6 }}>
+        <div className="text-center mt-6">
+          <Link href="/guide#handshake" className="text-dim text-[0.78rem] opacity-60">
             How does Handshake mode work? →
           </Link>
         </div>
