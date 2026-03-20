@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 import BalrogWhip from '@/components/BalrogWhip'
 import SmoothScroll from '@/components/SmoothScroll'
 import AtmosphericParticles from '@/components/AtmosphericParticles'
@@ -23,6 +24,7 @@ export default function RootLayout({
         <SmoothScroll />
         {children}
         <BalrogWhip />
+        <Analytics />
       </body>
     </html>
   )
